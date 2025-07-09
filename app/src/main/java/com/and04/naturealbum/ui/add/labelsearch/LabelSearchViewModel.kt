@@ -3,46 +3,69 @@ package com.and04.naturealbum.ui.add.labelsearch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.and04.naturealbum.data.repository.local.LabelRepository
+import com.and04.naturealbum.ui.add.labelsearch.contract.LabelSearchEffect
+import com.and04.naturealbum.ui.add.labelsearch.contract.LabelSearchIntent
+import com.and04.naturealbum.ui.add.labelsearch.contract.LabelSearchState
+import com.and04.naturealbum.ui.add.labelsearch.contract.LabelSelectEffectMassage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import org.orbitmvi.orbit.Container
+import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
 
 @HiltViewModel
 class LabelSearchViewModel @Inject constructor(
     private val labelRepository: LabelRepository,
-) : ViewModel() {
-    private val _queryLabel = MutableStateFlow(QueryLabel.empty())
-    val queryLabel = _queryLabel.asStateFlow()
+) : ContainerHost<LabelSearchState, LabelSearchEffect>, ViewModel() {
 
-    val uiState = flow {
-        emit(labelRepository.getLabels())
+    override val container: Container<LabelSearchState, LabelSearchEffect> =
+        container(LabelSearchState())
+
+    init {
+        flow {
+            emit(labelRepository.getLabels())
+        }.onEach {
+            intent {
+                reduce {
+                    state.copy(
+                        uiState = LabelSearchUiState.Success,
+                        labelList = it
+                    )
+                }
+            }
+        }.launchIn(viewModelScope)
     }
-        .map {
-            it.toLabelSearchUiState()
+
+    fun onIntent(intent: LabelSearchIntent) = intent {
+        when (intent) {
+            is LabelSearchIntent.QueryInput -> {
+                val queryIsEmpty = state.query.isEmpty()
+                reduce {
+                    state.copy(
+                        query = intent.query,
+                        color = if (queryIsEmpty) getRandomColor() else state.color
+                    )
+                }
+            }
+
+            is LabelSearchIntent.LabelClicked -> {
+                reduce {
+                    state.copy(label = intent.label)
+                }
+
+                postSideEffect(
+                    if (state.query.isBlank()) {
+                        LabelSearchEffect.ToastMassage(LabelSelectEffectMassage.EMPTY)
+                    } else if (state.labelList.any { label -> label.name == state.query }) {
+                        LabelSearchEffect.ToastMassage(LabelSelectEffectMassage.USED)
+                    } else {
+                        LabelSearchEffect.LabelSelected
+                    }
+                )
+            }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = LabelSearchUiState.Loading
-        )
-
-    fun updateQuery(text: String) {
-        _queryLabel.value = _queryLabel.value.copy(text = text)
-        if (text.isEmpty()) refreshChipColor()
-    }
-
-    private fun refreshChipColor() {
-        _queryLabel.value = _queryLabel.value.copy(color = getRandomColor())
-    }
-}
-
-data class QueryLabel(val text: String, val color: String) {
-    companion object {
-        fun empty() = QueryLabel("", getRandomColor())
     }
 }

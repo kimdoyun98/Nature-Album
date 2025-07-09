@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.and04.naturealbum.data.localdata.room.Label
+import com.and04.naturealbum.ui.add.labelsearch.contract.LabelSearchState
 import com.and04.naturealbum.ui.utils.UiState
 import org.junit.Before
 import org.junit.Rule
@@ -16,27 +17,26 @@ class LabelSearchTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
-    private val testUiState: MutableState<LabelSearchUiState> =
-        mutableStateOf(LabelSearchUiState.Loading)
-    private val editTextQuery: MutableState<QueryLabel> = mutableStateOf(QueryLabel.empty())
+    private val testState = mutableStateOf(
+        LabelSearchState(
+            query = "test name"
+        )
+    )
+    private val vertexAIState = mutableStateOf(UiState.Idle)
 
     @Before
     fun setup() {
         composeTestRule.setContent {
             LabelSearchScreen(
-                uiState = mutableStateOf(UiState.Idle),
-                labelsState = testUiState.value,
-                onSelected = {},
-                queryLabel = editTextQuery,
-                onChangeText = {}
+                vertexAIState = vertexAIState,
+                state = { LabelSearchState() },
+                onIntent = {},
             )
         }
     }
 
     @Test
     fun 로딩_중일_때는_리스트가_노출되지_않는다() {
-        testUiState.value = LabelSearchUiState.Loading
-
         composeTestRule
             .onNodeWithText("test name")
             .assertDoesNotExist()
@@ -44,8 +44,8 @@ class LabelSearchTest {
 
     @Test
     fun 이전에_등록한_라벨들의_리스트가_노출된다() {
-        testUiState.value = LabelSearchUiState.RegisteredLabels(
-            listOf(
+        testState.value = testState.value.copy(
+            labelList = listOf(
                 Label(
                     id = 1,
                     backgroundColor = getRandomColor(),
@@ -61,10 +61,9 @@ class LabelSearchTest {
 
     @Test
     fun 라벨을_입력하면_새로운_라벨이_노출된다() {
-        testUiState.value = LabelSearchUiState.RegisteredLabels(
-            emptyList()
+        testState.value = testState.value.copy(
+            query = "test"
         )
-        editTextQuery.value = editTextQuery.value.copy(text = "test")
 
         composeTestRule
             .onNode(
@@ -76,8 +75,8 @@ class LabelSearchTest {
 
     @Test
     fun 등록_된_라벨_중_입력_텍스트와_중복되는_라벨들이_노출된다() {
-        testUiState.value = LabelSearchUiState.RegisteredLabels(
-            listOf(
+        testState.value = testState.value.copy(
+            labelList = listOf(
                 Label(
                     id = 1,
                     backgroundColor = getRandomColor(),
@@ -93,9 +92,9 @@ class LabelSearchTest {
                     backgroundColor = getRandomColor(),
                     name = "고양이"
                 )
-            )
+            ),
+            query = "test"
         )
-        editTextQuery.value = editTextQuery.value.copy(text = "test")
 
         composeTestRule
             .onNodeWithText("test name")
@@ -104,8 +103,8 @@ class LabelSearchTest {
 
     @Test
     fun 등록_된_라벨_중_입력_텍스트와_중복되지_않은_라벨들은_노출되지_않는다() {
-        testUiState.value = LabelSearchUiState.RegisteredLabels(
-            listOf(
+        testState.value = testState.value.copy(
+            labelList = listOf(
                 Label(
                     id = 1,
                     backgroundColor = getRandomColor(),
@@ -121,9 +120,9 @@ class LabelSearchTest {
                     backgroundColor = getRandomColor(),
                     name = "고양이"
                 )
-            )
+            ),
+            query = "test"
         )
-        editTextQuery.value = editTextQuery.value.copy(text = "test")
 
         composeTestRule
             .onNodeWithText("강아지")

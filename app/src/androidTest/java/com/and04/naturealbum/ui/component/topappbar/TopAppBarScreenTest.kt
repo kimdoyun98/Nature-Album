@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.core.net.toUri
 import com.and04.naturealbum.ui.add.savephoto.SavePhotoScreen
+import com.and04.naturealbum.ui.add.savephoto.contract.SavePhotoState
 import com.and04.naturealbum.ui.album.labelphotos.AlbumFolderScreen
 import com.and04.naturealbum.ui.album.labels.AlbumScreen
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfo
@@ -83,20 +84,13 @@ class TopAppBarScreenTest {
 
     @Test
     fun 앨범_등록_화면() {
+        val state = SavePhotoState()
         composeTestRule.setContent {
             SavePhotoScreen(
-                model = "".toUri(),
-                location = mutableStateOf(null),
-                photoSaveState = mutableStateOf(UiState.Idle),
-                rememberDescription = mutableStateOf(""),
-                onDescriptionChange = {},
-                isRepresented = mutableStateOf(false),
-                onRepresentedChange = {},
-                onNavigateToMyPage = {},
-                onLabelSelect = {},
-                onBack = {},
-                savePhoto = { _, _, _, _, _, _, _ -> },
-                label = null
+                state = { state },
+                initState = { state },
+                changeState = {},
+                onIntent = {},
             )
         }
 
