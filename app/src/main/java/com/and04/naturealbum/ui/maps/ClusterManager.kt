@@ -2,11 +2,11 @@ package com.and04.naturealbum.ui.maps
 
 import android.graphics.PointF
 import androidx.annotation.IntRange
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import com.and04.naturealbum.R
+import com.and04.naturealbum.ui.maps.contract.MapIntent
 import com.naver.maps.map.NaverMap
 import com.naver.maps.map.clustering.ClusterMarkerInfo
 import com.naver.maps.map.clustering.Clusterer
@@ -97,30 +97,42 @@ class ClusterManager(
         private const val LEAF_NODE_SIZE = 1
         private const val DEFAULT_MARKER_Z_INDEX = 200000
         private const val THRESHOLD_DISTANCE = 30.0
+        private var pick: PhotoItem? = null
 
         private val markerIcon = OverlayImage.fromResource(R.drawable.ic_cluster)
 
+        fun updatePick(pick: PhotoItem?) {
+            this.pick = pick
+        }
+
         fun getList(
-            bottomSheetPhotos: MutableState<List<PhotoItem>>,
-            pick: MutableState<PhotoItem?>
+            onIntent: (MapIntent) -> Unit,
         ): List<ClusterManager> =
             ColorRange.entries.map { colorRange ->
                 ClusterManager(
                     colorRange = colorRange,
                     onClusterClick = { info ->
                         Overlay.OnClickListener {
-                            bottomSheetPhotos.value = info.tag as List<PhotoItem>
-                            pick.value = bottomSheetPhotos.value
-                                .groupBy { photoItem -> photoItem.label }
-                                .maxBy { (_, photoItems) -> photoItems.size }.value
-                                .maxBy { photoItem -> photoItem.time }
+                            val bottomSheetPhotos = info.tag as List<PhotoItem>
+                            onIntent(
+                                MapIntent.ClusterClicked(
+                                    bottomSheetPhotos = bottomSheetPhotos,
+                                    pick = bottomSheetPhotos
+                                        .groupBy { photoItem -> photoItem.label }
+                                        .maxBy { (_, photoItems) -> photoItems.size }.value
+                                        .maxBy { photoItem -> photoItem.time }
+                                )
+                            )
                             true
                         }
                     },
                     onClusterChange = { info ->
                         val changedCluster = info.tag as List<PhotoItem>
-                        if (changedCluster.contains(pick.value)) bottomSheetPhotos.value =
-                            changedCluster
+                        if (changedCluster.contains(pick)) {
+                            onIntent(
+                                MapIntent.ClusterChanged(bottomSheetPhotos = changedCluster)
+                            )
+                        }
                     }
                 )
             }

@@ -1,18 +1,26 @@
 package com.and04.naturealbum.ui.maps
 
+import android.graphics.PointF
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.data.repository.firebase.AlbumRepository
 import com.and04.naturealbum.data.repository.firebase.FriendRepository
 import com.and04.naturealbum.data.repository.local.LabelRepository
 import com.and04.naturealbum.data.repository.local.PhotoDetailRepository
+import com.and04.naturealbum.ui.maps.contract.MapEffect
+import com.and04.naturealbum.ui.maps.contract.MapIntent
+import com.and04.naturealbum.ui.maps.contract.MapState
+import com.and04.naturealbum.ui.utils.UserManager
+import com.and04.naturealbum.utils.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import org.orbitmvi.orbit.Container
+import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
 
 @HiltViewModel
@@ -21,36 +29,149 @@ class MapScreenViewModel @Inject constructor(
     private val albumRepository: AlbumRepository,
     private val friendRepository: FriendRepository,
     private val labelRepository: LabelRepository,
-) : ViewModel() {
-    private var myPhotos = listOf<PhotoItem>()
-    private val _photosByUid = MutableStateFlow<Map<String, List<PhotoItem>>>(emptyMap())
-    val photosByUid: StateFlow<Map<String, List<PhotoItem>>> = _photosByUid
+    private val networkManager: NetworkManager,
+) : ContainerHost<MapState, MapEffect>, ViewModel() {
 
-    private val _friends = MutableStateFlow<List<FirebaseFriend>>(emptyList())
-    val friends: StateFlow<List<FirebaseFriend>> = _friends
+    override val container: Container<MapState, MapEffect> = container(MapState())
 
     init {
-        viewModelScope.launch {
-            val fetchPhotos = async { photoDetailRepository.getAllPhotoDetail() }
-            val fetchLabels = labelRepository.getLabels()
-            myPhotos = fetchPhotos.await().toPhotoItems(fetchLabels)
-            _photosByUid.emit(mapOf("" to myPhotos))
+        checkNetwork()
+        initPhotos()
+    }
+
+    fun onIntent(intent: MapIntent) = intent {
+        when (intent) {
+            is MapIntent.BackButtonClicked -> {
+                postSideEffect(MapEffect.NavigateHome)
+            }
+
+            is MapIntent.InitMap -> {
+                reduce { state.copy(pick = null, bottomSheetPhotos = emptyList()) }
+
+                postSideEffect(MapEffect.PickChanged)
+            }
+
+            is MapIntent.PickChanged -> {
+                reduce { state.copy(pick = intent.pick) }
+
+                postSideEffect(MapEffect.PickChanged)
+            }
+
+            is MapIntent.ClusterClicked -> {
+                reduce {
+                    state.copy(
+                        pick = intent.pick,
+                        bottomSheetPhotos = intent.bottomSheetPhotos
+                    )
+                }
+
+                postSideEffect(MapEffect.PickChanged)
+            }
+
+            is MapIntent.ClusterChanged -> {
+                reduce { state.copy(bottomSheetPhotos = intent.bottomSheetPhotos) }
+            }
+
+            is MapIntent.MarkerClicked -> {
+                reduce { state.copy(showPhotoContent = true) }
+            }
+
+            is MapIntent.FriendIconClicked -> {
+                val uid = UserManager.getUser()!!.uid
+                fetchFriends(uid)
+
+                reduce { state.copy(openDialog = true) }
+            }
+
+            is MapIntent.BottomSheetStateChanged -> {
+                reduce {
+                    state.copy(
+                        cameraPivot =
+                        if (intent.isCollapsed) PointF(0.5f, 0.5f)
+                        else PointF(
+                            0.5f,
+                            0.3f
+                        )
+                    )
+                }
+
+                postSideEffect(MapEffect.CameraPivotChanged)
+            }
+
+            is MapIntent.PhotoContentDisMiss -> {
+                reduce { state.copy(showPhotoContent = false) }
+            }
+
+            is MapIntent.PhotoClicked -> {
+                reduce { state.copy(pick = intent.photo) }
+
+                if (intent.isDoubleClicked) {
+                    reduce {
+                        state.copy(showPhotoContent = true)
+                    }
+                }
+
+                postSideEffect(MapEffect.PickChanged)
+            }
+
+            is MapIntent.FriendDialogDisMiss -> {
+                reduce { state.copy(openDialog = false) }
+            }
+
+            is MapIntent.FriendDialogConfirm -> {
+                reduce {
+                    state.copy(
+                        selectedFriends = intent.friends,
+                        openDialog = false
+                    )
+                }
+
+                fetchFriendsPhotos(intent.friends.map { friend -> friend.user.uid })
+            }
         }
     }
 
-    fun fetchFriendsPhotos(friends: List<String>) {
+    private fun checkNetwork() = intent {
+        viewModelScope.launch {
+            networkManager.networkState.collect { networkState ->
+                reduce {
+                    state.copy(networkState = networkState)
+                }
+            }
+        }
+    }
+
+    private fun initPhotos() = intent {
+        viewModelScope.launch {
+            val fetchPhotos = async { photoDetailRepository.getAllPhotoDetail() }
+            val fetchLabels = labelRepository.getLabels()
+            val myPhotos = fetchPhotos.await().toPhotoItems(fetchLabels)
+
+            reduce {
+                state.copy(photosByUid = mapOf("" to myPhotos))
+            }
+
+            postSideEffect(MapEffect.PhotosByUidChanged)
+        }
+    }
+
+    private fun fetchFriendsPhotos(friends: List<String>) = intent {
         viewModelScope.launch {
             try {
                 val photos = async { albumRepository.getPhotos(friends) }
                 val labels = albumRepository.getLabelsToMap(friends)
-                _photosByUid.emit(
-                    mapOf("" to myPhotos) +
-                            photos.await()
-                                .getOrThrow()
-                                .mapValues { (uid, photos) ->
-                                    photos.toFriendPhotoItems(labels.getOrThrow().getValue(uid))
-                                }
-                )
+                val photosMap = state.photosByUid +
+                        photos.await()
+                            .getOrThrow()
+                            .mapValues { (uid, photos) ->
+                                photos.toFriendPhotoItems(labels.getOrThrow().getValue(uid))
+                            }
+
+                reduce {
+                    state.copy(photosByUid = photosMap)
+                }
+
+                postSideEffect(MapEffect.PhotosByUidChanged)
 
             } catch (e: Exception) {
                 Log.e("MapScreenViewModel", e.toString())
@@ -58,11 +179,13 @@ class MapScreenViewModel @Inject constructor(
         }
     }
 
-    fun fetchFriends(uid: String) {
-        viewModelScope.launch {
-            friendRepository.getFriendsAsFlow(uid).collect { friends ->
-                _friends.value = friends
+    private fun fetchFriends(uid: String) = intent {
+        friendRepository.getFriendsAsFlow(uid)
+            .onEach { friends ->
+                reduce {
+                    state.copy(friends = friends)
+                }
             }
-        }
+            .launchIn(viewModelScope)
     }
 }

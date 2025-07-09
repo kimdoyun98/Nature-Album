@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,17 +52,17 @@ const val USER_SELECT_MAX = 4
 
 @Composable
 fun FriendDialog(
-    isOpen: State<Boolean> = remember { mutableStateOf(true) },
-    friends: State<List<FirebaseFriend>> = remember { mutableStateOf(emptyList()) },
-    selectedFriends: State<List<FirebaseFriend>> = remember { mutableStateOf(emptyList()) },
+    isOpen: Boolean = false,
+    friends: List<FirebaseFriend> = emptyList(),
+    selectedFriends: List<FirebaseFriend> = emptyList(),
     userSelectMax: Int = USER_SELECT_MAX,
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
     onConfirm: (List<FirebaseFriend>) -> Unit = {}
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    var checkedFriends by remember { mutableStateOf<List<FirebaseFriend>>(selectedFriends.value) }
-    if (isOpen.value) {
+    var checkedFriends by remember { mutableStateOf<List<FirebaseFriend>>(selectedFriends) }
+    if (isOpen) {
         Dialog(
             onDismissRequest = { onDismiss() },
         ) {
@@ -93,14 +92,14 @@ fun FriendDialog(
                     )
                 }
 
-                if (friends.value.isNotEmpty()) {
+                if (friends.isNotEmpty()) {
                     LazyColumn(
                         modifier = modifier
                             .weight(weight = 1f, fill = false)
                             .padding(horizontal = 16.dp),
                     ) {
                         items(
-                            items = friends.value,
+                            items = friends,
                             key = { item -> item.user.uid },
                         ) { friend ->
                             FriendDialogItem(friend = friend,
@@ -168,7 +167,7 @@ fun FriendDialog(
 }
 
 @Composable
-fun FriendDialogItem(
+private fun FriendDialogItem(
     friend: FirebaseFriend,
     isSelect: Boolean,
     modifier: Modifier = Modifier,
@@ -211,39 +210,27 @@ fun FriendDialogItem(
 
 @Preview
 @Composable
-fun EmptyDialogPreView() {
-    val friends = remember { mutableStateOf<List<FirebaseFriend>>(emptyList()) }
-    val selectedFriends = remember { mutableStateOf<List<FirebaseFriend>>(emptyList()) }
-
+private fun EmptyDialogPreView() {
     NatureAlbumTheme {
         Box(modifier = Modifier.fillMaxSize()) {
-            FriendDialog(
-                friends = friends,
-                selectedFriends = selectedFriends,
-            )
+            FriendDialog()
         }
     }
 }
 
 @Preview
 @Composable
-fun MinimumDialogPreView() {
-    val friends = remember {
-        mutableStateOf<List<FirebaseFriend>>(
-            listOf(
-                FirebaseFriend(
-                    FirestoreUser(displayName = "test")
-                )
-            )
+private fun MinimumDialogPreView() {
+    val friends = listOf(
+        FirebaseFriend(
+            FirestoreUser(displayName = "test")
         )
-    }
-    val selectedFriends = remember { mutableStateOf<List<FirebaseFriend>>(emptyList()) }
+    )
 
     NatureAlbumTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             FriendDialog(
-                friends = friends,
-                selectedFriends = selectedFriends,
+                friends = friends
             )
         }
     }
@@ -251,20 +238,16 @@ fun MinimumDialogPreView() {
 
 @Preview
 @Composable
-fun FullDialogPreView() {
-    val friends = remember {
-        mutableStateOf<List<FirebaseFriend>>(List(10) {
-            (FirebaseFriend(
-                FirestoreUser(uid = "$it", displayName = "test${it + 1}")
-            ))
-        })
+private fun FullDialogPreView() {
+    val friends = List(10) {
+        (FirebaseFriend(
+            FirestoreUser(uid = "$it", displayName = "test${it + 1}")
+        ))
     }
-    val selectedFriends = remember {
-        mutableStateOf<List<FirebaseFriend>>(setOf(2, 4).map {
-            (FirebaseFriend(
-                FirestoreUser(uid = "$it", displayName = "test${it + 1}")
-            ))
-        })
+    val selectedFriends = setOf(2, 4).map {
+        (FirebaseFriend(
+            FirestoreUser(uid = "$it", displayName = "test${it + 1}")
+        ))
     }
 
     NatureAlbumTheme {

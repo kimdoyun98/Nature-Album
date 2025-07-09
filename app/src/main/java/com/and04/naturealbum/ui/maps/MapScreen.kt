@@ -1,6 +1,5 @@
 package com.and04.naturealbum.ui.maps
 
-import android.graphics.PointF
 import android.view.Gravity
 import android.view.View
 import androidx.activity.compose.BackHandler
@@ -28,10 +27,6 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,24 +39,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.request.ImageRequest
 import coil3.request.placeholder
 import com.and04.naturealbum.R
-import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.ui.component.LoadingAsyncImage
 import com.and04.naturealbum.ui.component.NetworkDisconnectContent
 import com.and04.naturealbum.ui.component.PartialBottomSheet
 import com.and04.naturealbum.ui.component.PhotoContent
+import com.and04.naturealbum.ui.maps.contract.MapEffect
+import com.and04.naturealbum.ui.maps.contract.MapIntent
+import com.and04.naturealbum.ui.maps.contract.MapState
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.color.toColor
 import com.and04.naturealbum.utils.network.NetworkState
-import com.and04.naturealbum.utils.network.NetworkViewModel
 import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.CameraAnimation
 import com.naver.maps.map.CameraUpdate
@@ -73,39 +67,34 @@ import com.naver.maps.map.overlay.OverlayImage
 
 @Composable
 fun MapScreen(
+    state: () -> MapState,
+    sideEffect: @Composable ((suspend (sideEffect: MapEffect) -> Unit)) -> Unit,
+    onIntent: (MapIntent) -> Unit,
     navigateToHome: () -> Unit,
     modifier: Modifier = Modifier,
-    userViewModel: MapScreenViewModel = hiltViewModel(),
-    networkViewModel: NetworkViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
-    val networkState = networkViewModel.networkState.collectAsStateWithLifecycle()
-    val friends = userViewModel.friends.collectAsStateWithLifecycle()
-    val photosByUid = userViewModel.photosByUid.collectAsStateWithLifecycle()
 
-    val showPhotoContent = remember { mutableStateOf(false) }
-    val openDialog = remember { mutableStateOf(false) }
-    val pick = remember { mutableStateOf<PhotoItem?>(null) }
     val marker = remember {
         Marker().apply {
             onClickListener = Overlay.OnClickListener {
-                showPhotoContent.value = true
+                onIntent(MapIntent.MarkerClicked)
                 true
             }
         }
     }
-    val bottomSheetPhotos = remember { mutableStateOf(listOf<PhotoItem>()) }
-    val selectedFriends = remember { mutableStateOf(listOf<FirebaseFriend>()) }
     val clusterManagers: List<ClusterManager> =
-        remember { ClusterManager.getList(bottomSheetPhotos, pick) }
+        remember {
+            ClusterManager.getList(
+                onIntent = onIntent
+            )
+        }
     val mapView = remember {
         mapViewSettings(MapView(context), clusterManagers) {
-            bottomSheetPhotos.value = emptyList()
-            pick.value = null
+            onIntent(MapIntent.InitMap.MapClicked)
         }
     }
-    val cameraPivot = remember { mutableStateOf(PointF(0.5f, 0.5f)) }
     val imageMarker = remember {
         ImageMarker(context).apply {
             visibility = View.INVISIBLE
@@ -113,58 +102,35 @@ fun MapScreen(
         }
     }
 
-    BackHandler(
-        enabled = (pick.value != null)
-    ) {
-        pick.value = null
-        bottomSheetPhotos.value = emptyList()
-    }
-
     EffectCollection(
-        cameraPivot = cameraPivot,
+        sideEffect = sideEffect,
+        onIntent = onIntent,
+        navigateToHome = navigateToHome,
+        state = state,
         mapView = mapView,
-        pick = pick,
         marker = marker,
         imageMarker = imageMarker,
-        photosByUid = photosByUid,
         clusterManagers = clusterManagers,
-        bottomSheetPhotos = bottomSheetPhotos,
         lifecycleOwner = lifecycleOwner
     )
 
     NatureAlbumMap(
         modifier = modifier,
-        networkState = networkState,
+        state = state,
+        onIntent = onIntent,
         mapView = mapView,
-        userViewModel = userViewModel,
-        openDialog = openDialog,
-        bottomSheetPhotos = bottomSheetPhotos,
-        cameraPivot = cameraPivot,
-        pick = pick,
-        showPhotoContent = showPhotoContent,
-        friends = friends,
-        selectedFriends = selectedFriends,
-        navigateToHome = navigateToHome
     )
 }
 
 @Composable
 private fun NatureAlbumMap(
     modifier: Modifier,
-    networkState: State<Int>,
+    state: () -> MapState,
+    onIntent: (MapIntent) -> Unit,
     mapView: MapView,
-    userViewModel: MapScreenViewModel,
-    openDialog: MutableState<Boolean>,
-    bottomSheetPhotos: MutableState<List<PhotoItem>>,
-    cameraPivot: MutableState<PointF>,
-    pick: MutableState<PhotoItem?>,
-    showPhotoContent: MutableState<Boolean>,
-    friends: State<List<FirebaseFriend>>,
-    selectedFriends: MutableState<List<FirebaseFriend>>,
-    navigateToHome: () -> Unit
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        if (networkState.value == NetworkState.DISCONNECTED) {
+        if (state().networkState == NetworkState.DISCONNECTED) {
             NetworkDisconnectContent()
         } else {
             // AndroidView를 MapView로 바로 설정
@@ -173,8 +139,7 @@ private fun NatureAlbumMap(
             if (UserManager.isSignIn()) {
                 IconButton(
                     onClick = {
-                        userViewModel.fetchFriends(UserManager.getUser()!!.uid)
-                        openDialog.value = true
+                        onIntent(MapIntent.FriendIconClicked)
                     },
                     modifier = modifier
                         .align(Alignment.TopEnd)
@@ -193,45 +158,54 @@ private fun NatureAlbumMap(
             }
 
             PartialBottomSheet(
-                isVisible = bottomSheetPhotos.value.isNotEmpty(),
+                isVisible = state().bottomSheetPhotos.isNotEmpty(),
                 onCollapsed = { isCollapsed ->
-                    cameraPivot.value = if (isCollapsed) PointF(0.5f, 0.5f) else PointF(0.5f, 0.3f)
+                    onIntent(MapIntent.BottomSheetStateChanged(isCollapsed = isCollapsed))
                 },
                 modifier = modifier.padding(horizontal = 16.dp),
                 fullExpansionSize = 0.95f
             ) {
                 PhotoGrid(
-                    photos = bottomSheetPhotos,
+                    photos = state().bottomSheetPhotos,
                     modifier = modifier,
-                    onPhotoClick = { photo -> pick.value = photo },
+                    onPhotoClick = { photo ->
+                        onIntent(
+                            MapIntent.PhotoClicked(
+                                photo = photo,
+                                isDoubleClicked = false
+                            )
+                        )
+                    },
                     onPhotoDoubleClick = { photo ->
-                        pick.value = photo
-                        showPhotoContent.value = true
+                        onIntent(
+                            MapIntent.PhotoClicked(
+                                photo = photo,
+                                isDoubleClicked = true
+                            )
+                        )
                     }
                 )
             }
 
             FriendDialog(
-                isOpen = openDialog,
-                friends = friends,
-                selectedFriends = selectedFriends,
-                onDismiss = { openDialog.value = false },
+                isOpen = state().openDialog,
+                friends = state().friends,
+                selectedFriends = state().selectedFriends,
+                onDismiss = { onIntent(MapIntent.FriendDialogDisMiss) },
                 onConfirm = { friends ->
-                    selectedFriends.value = friends
-                    userViewModel.fetchFriendsPhotos(friends.map { friend -> friend.user.uid })
-                    openDialog.value = false
+                    onIntent(MapIntent.FriendDialogConfirm(friends))
                 }
             )
-            if (showPhotoContent.value) {
+            if (state().showPhotoContent) {
                 PhotoContent(
-                    imageUri = pick.value!!.uri,
-                    contentDescription = pick.value!!.label.name,
-                    onDismiss = { showPhotoContent.value = false }
+                    imageUri = state().pick!!.uri,
+                    contentDescription = state().pick!!.label.name,
+                    onDismiss = { onIntent(MapIntent.PhotoContentDisMiss) }
                 )
             }
         }
         IconButton(
-            onClick = navigateToHome,
+            onClick = { onIntent(MapIntent.BackButtonClicked) },
             modifier = modifier
                 .size(48.dp)
                 .align(Alignment.TopStart),
@@ -247,65 +221,74 @@ private fun NatureAlbumMap(
 
 @Composable
 private fun EffectCollection(
-    cameraPivot: MutableState<PointF>,
+    sideEffect: @Composable ((suspend (sideEffect: MapEffect) -> Unit)) -> Unit,
+    state: () -> MapState,
+    onIntent: (MapIntent) -> Unit,
+    navigateToHome: () -> Unit,
     mapView: MapView,
-    pick: MutableState<PhotoItem?>,
     marker: Marker,
     imageMarker: ImageMarker,
-    photosByUid: State<Map<String, List<PhotoItem>>>,
     clusterManagers: List<ClusterManager>,
-    bottomSheetPhotos: MutableState<List<PhotoItem>>,
     lifecycleOwner: LifecycleOwner,
 ) {
-    LaunchedEffect(cameraPivot.value) {
-        mapView.getMapAsync { naverMap ->
-            pick.value?.let { pick ->
-                naverMap.moveCamera(
-                    CameraUpdate.scrollTo(pick.position).pivot(cameraPivot.value)
-                        .animate(CameraAnimation.Easing, 500)
-                )
+    sideEffect { effect ->
+        when (effect) {
+            is MapEffect.NavigateHome -> {
+                navigateToHome()
             }
-        }
-    }
 
-    LaunchedEffect(pick.value) {
-        mapView.getMapAsync { naverMap ->
-            marker.map = pick.value?.let { pick ->
-                naverMap.moveCamera(
-                    CameraUpdate.scrollTo(pick.position).pivot(cameraPivot.value)
-                        .animate(CameraAnimation.Easing, 500)
-                )
-                imageMarker.loadImage(pick.uri) {
-                    marker.icon = OverlayImage.fromView(imageMarker)
+            is MapEffect.CameraPivotChanged -> {
+                mapView.getMapAsync { naverMap ->
+                    state().pick?.let { pick ->
+                        naverMap.moveCamera(
+                            CameraUpdate.scrollTo(pick.position).pivot(state().cameraPivot)
+                                .animate(CameraAnimation.Easing, 500)
+                        )
+                    }
                 }
-                marker.position = pick.position
-                naverMap
             }
-        }
-    }
 
-    LaunchedEffect(photosByUid.value) {
-        clusterManagers.forEachIndexed { index, cluster ->
-            cluster.setPhotoItems(
-                photosByUid.value.keys.elementAtOrNull(index) ?: "",
-                photosByUid.value.values.elementAtOrNull(index) ?: emptyList()
-            )
-        }
-
-        pick.value = null
-        bottomSheetPhotos.value = emptyList()
-
-        val totalPhotos = photosByUid.value.values.flatten()
-        if (totalPhotos.isNotEmpty()) {
-            val bound = LatLngBounds.Builder().apply {
-                totalPhotos.forEach { photoItem ->
-                    include(photoItem.position)
+            is MapEffect.PickChanged -> {
+                mapView.getMapAsync { naverMap ->
+                    marker.map = state().pick?.let { pick ->
+                        naverMap.moveCamera(
+                            CameraUpdate.scrollTo(pick.position).pivot(state().cameraPivot)
+                                .animate(CameraAnimation.Easing, 500)
+                        )
+                        imageMarker.loadImage(pick.uri) {
+                            marker.icon = OverlayImage.fromView(imageMarker)
+                        }
+                        marker.position = pick.position
+                        naverMap
+                    }
                 }
-            }.build()
-            mapView.getMapAsync { naverMap ->
-                naverMap.moveCamera(
-                    CameraUpdate.fitBounds(bound, 300).animate(CameraAnimation.Easing, 500)
-                )
+
+                ClusterManager.updatePick(state().pick)
+            }
+
+            is MapEffect.PhotosByUidChanged -> {
+                clusterManagers.forEachIndexed { index, cluster ->
+                    cluster.setPhotoItems(
+                        state().photosByUid.keys.elementAtOrNull(index) ?: "",
+                        state().photosByUid.values.elementAtOrNull(index) ?: emptyList()
+                    )
+                }
+
+                onIntent(MapIntent.InitMap.FriendsReload)
+
+                val totalPhotos = state().photosByUid.values.flatten()
+                if (totalPhotos.isNotEmpty()) {
+                    val bound = LatLngBounds.Builder().apply {
+                        totalPhotos.forEach { photoItem ->
+                            include(photoItem.position)
+                        }
+                    }.build()
+                    mapView.getMapAsync { naverMap ->
+                        naverMap.moveCamera(
+                            CameraUpdate.fitBounds(bound, 300).animate(CameraAnimation.Easing, 500)
+                        )
+                    }
+                }
             }
         }
     }
@@ -339,22 +322,28 @@ private fun EffectCollection(
         onDispose {
         }
     }
+
+    BackHandler(
+        enabled = (state().pick != null)
+    ) {
+        onIntent(MapIntent.InitMap.BackButtonClicked)
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhotoGrid(
-    photos: State<List<PhotoItem>>,
+    photos: List<PhotoItem>,
     columnCount: Int = 3,
     modifier: Modifier = Modifier,
     onPhotoClick: (PhotoItem) -> Unit,
     onPhotoDoubleClick: (PhotoItem) -> Unit,
 ) {
-    val groupByLabel = photos
-        .value
-        .groupBy { photoItem -> photoItem.label }
-        .toList()
-        .sortedByDescending { (_, photoItem) -> photoItem.size }
+    val groupByLabel =
+        photos
+            .groupBy { photoItem -> photoItem.label }
+            .toList()
+            .sortedByDescending { (_, photoItem) -> photoItem.size }
 
     LazyColumn(
         modifier = modifier,
