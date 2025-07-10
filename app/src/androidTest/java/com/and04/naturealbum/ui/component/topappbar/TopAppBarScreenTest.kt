@@ -9,7 +9,8 @@ import com.and04.naturealbum.ui.add.savephoto.SavePhotoScreen
 import com.and04.naturealbum.ui.add.savephoto.contract.SavePhotoState
 import com.and04.naturealbum.ui.album.labelphotos.LabelPhotosScreen
 import com.and04.naturealbum.ui.album.labelphotos.contract.LabelPhotosState
-import com.and04.naturealbum.ui.album.labels.AlbumScreen
+import com.and04.naturealbum.ui.album.labels.LabelsScreen
+import com.and04.naturealbum.ui.album.labels.contract.LabelsState
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfo
 import com.and04.naturealbum.ui.home.HomeScreen
 import com.and04.naturealbum.ui.mypage.LoginState
@@ -110,11 +111,9 @@ class TopAppBarScreenTest {
     @Test
     fun 앨범_화면() {
         composeTestRule.setContent {
-            AlbumScreen(
-                mutableStateOf(emptyList()),
-                {},
-                {},
-                {}
+            LabelsScreen(
+                state = LabelsState(),
+                onIntent = {}
             )
         }
 
