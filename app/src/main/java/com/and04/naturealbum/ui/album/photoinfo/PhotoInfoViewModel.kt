@@ -3,17 +3,20 @@ package com.and04.naturealbum.ui.album.photoinfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.and04.naturealbum.data.localdata.room.PhotoDetail
-import com.and04.naturealbum.data.model.AlbumData
 import com.and04.naturealbum.data.repository.RetrofitRepository
 import com.and04.naturealbum.data.repository.local.LabelRepository
 import com.and04.naturealbum.data.repository.local.LocalAlbumRepository
 import com.and04.naturealbum.data.repository.local.PhotoDetailRepository
-import com.and04.naturealbum.ui.utils.UiState
+import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoEffect
+import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoIntent
+import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoState
+import com.and04.naturealbum.ui.album.photoinfo.utils.PhotoInfoUiState
 import com.and04.naturealbum.utils.network.NetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.orbitmvi.orbit.Container
+import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,43 +25,71 @@ class PhotoInfoViewModel @Inject constructor(
     private val retrofitRepository: RetrofitRepository,
     private val localAlbumRepository: LocalAlbumRepository,
     private val labelRepository: LabelRepository,
-) : ViewModel() {
-    private val _uiState = MutableStateFlow<UiState<AlbumData>>(UiState.Idle)
-    val uiState: StateFlow<UiState<AlbumData>> = _uiState
+) : ContainerHost<PhotoInfoState, PhotoInfoEffect>, ViewModel() {
 
-    private val _address = MutableStateFlow("")
-    val address: StateFlow<String> = _address
+    override val container: Container<PhotoInfoState, PhotoInfoEffect> = container(PhotoInfoState())
 
-    fun loadPhotoDetail(id: Int) {
+    init {
+        intent {
+            postSideEffect(PhotoInfoEffect.InitPhotoInfo)
+        }
+    }
+
+    fun onIntent(intent: PhotoInfoIntent) = intent {
+        when (intent) {
+            is PhotoInfoIntent.BackButtonClicked -> {
+                postSideEffect(PhotoInfoEffect.Back)
+            }
+
+            is PhotoInfoIntent.MyPageButtonClicked -> {
+                postSideEffect(PhotoInfoEffect.MyPage)
+            }
+
+            is PhotoInfoIntent.SetThumbnailButtonClicked -> {
+                setAlbumThumbnail(intent.id)
+
+                postSideEffect(PhotoInfoEffect.Toast(intent.message))
+            }
+        }
+    }
+
+    fun loadPhotoDetail(id: Int) = intent {
         viewModelScope.launch {
-            _uiState.emit(UiState.Loading)
+            reduce { state.copy(state = PhotoInfoUiState.Loading) }
 
             val photoDetail = photoDetailRepository.getPhotoDetailById(id)
             val label = labelRepository.getLabelById(photoDetail.labelId)
 
             convertCoordsToAddress(photoDetail = photoDetail)
 
-            _uiState.emit(UiState.Success(AlbumData(label, photoDetail)))
+            reduce {
+                state.copy(
+                    state = PhotoInfoUiState.Success,
+                    label = label,
+                    photo = photoDetail
+                )
+            }
         }
     }
 
-    fun setAlbumThumbnail(photoDetailId: Int) {
+    private fun setAlbumThumbnail(photoDetailId: Int) {
         viewModelScope.launch {
             localAlbumRepository.updateAlbumPhotoDetailByAlbumId(photoDetailId)
         }
     }
 
-    private suspend fun convertCoordsToAddress(photoDetail: PhotoDetail) {
+    private fun convertCoordsToAddress(photoDetail: PhotoDetail) = intent {
         val coords = "${photoDetail.latitude}, ${photoDetail.longitude}"
         val cachedAddress = photoDetailRepository.getAddressByPhotoDetailId(photoDetail.id)
+
         if (cachedAddress.isNotEmpty()) {
-            _address.emit(cachedAddress)
-            return
+            reduce { state.copy(address = cachedAddress) }
+            return@intent
         }
 
         if (NetworkState.getNetWorkCode() == NetworkState.DISCONNECTED) {
-            _address.emit(coords)
-            return
+            reduce { state.copy(address = coords) }
+            return@intent
         }
 
         val newAddress = retrofitRepository.convertCoordsToAddress(
@@ -68,9 +99,9 @@ class PhotoInfoViewModel @Inject constructor(
 
         if (newAddress.isNotEmpty()) {
             photoDetailRepository.updateAddressByPhotoDetailId(newAddress, photoDetail.id)
-            _address.emit(newAddress)
+            reduce { state.copy(address = newAddress) }
         } else {
-            _address.emit(coords)
+            reduce { state.copy(address = coords) }
         }
     }
 }

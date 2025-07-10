@@ -11,12 +11,12 @@ import com.and04.naturealbum.ui.album.labelphotos.LabelPhotosScreen
 import com.and04.naturealbum.ui.album.labelphotos.contract.LabelPhotosState
 import com.and04.naturealbum.ui.album.labels.LabelsScreen
 import com.and04.naturealbum.ui.album.labels.contract.LabelsState
-import com.and04.naturealbum.ui.album.photoinfo.PhotoInfo
+import com.and04.naturealbum.ui.album.photoinfo.PhotoInfoScreen
+import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoState
 import com.and04.naturealbum.ui.home.HomeScreen
 import com.and04.naturealbum.ui.mypage.LoginState
 import com.and04.naturealbum.ui.mypage.MyPageScreenContent
 import com.and04.naturealbum.ui.utils.LocationHandler
-import com.and04.naturealbum.ui.utils.UiState
 import org.junit.Rule
 import org.junit.Test
 
@@ -157,12 +157,9 @@ class TopAppBarScreenTest {
     @Test
     fun 앨범_사진_상세_화면() {
         composeTestRule.setContent {
-            PhotoInfo(
-                {},
-                {},
-                mutableStateOf(UiState.Idle),
-                mutableStateOf(""),
-                { _ -> }
+            PhotoInfoScreen(
+                state = PhotoInfoState(),
+                onIntent = {}
             )
         }
 
