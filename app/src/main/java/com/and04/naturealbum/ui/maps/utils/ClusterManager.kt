@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.maps
+package com.and04.naturealbum.ui.maps.utils
 
 import android.graphics.PointF
 import androidx.annotation.IntRange
@@ -106,7 +106,7 @@ class ClusterManager(
         private val markerIcon = OverlayImage.fromResource(R.drawable.ic_cluster)
 
         fun updatePick(pick: PhotoItem?) {
-            this.pick = pick
+            Companion.pick = pick
         }
 
         fun getList(

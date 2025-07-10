@@ -1,7 +1,7 @@
 package com.and04.naturealbum.maps
 
-import com.and04.naturealbum.ui.maps.LabelItem
-import com.and04.naturealbum.ui.maps.PhotoItem
+import com.and04.naturealbum.ui.maps.utils.LabelItem
+import com.and04.naturealbum.ui.maps.utils.PhotoItem
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.geometry.LatLngBounds
 import org.junit.Assert.assertTrue

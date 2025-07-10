@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.maps
+package com.and04.naturealbum.ui.maps.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable

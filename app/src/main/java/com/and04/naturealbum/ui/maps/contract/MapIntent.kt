@@ -1,7 +1,7 @@
 package com.and04.naturealbum.ui.maps.contract
 
 import com.and04.naturealbum.data.dto.FirebaseFriend
-import com.and04.naturealbum.ui.maps.PhotoItem
+import com.and04.naturealbum.ui.maps.utils.PhotoItem
 import kotlinx.collections.immutable.ImmutableList
 
 sealed interface MapIntent {

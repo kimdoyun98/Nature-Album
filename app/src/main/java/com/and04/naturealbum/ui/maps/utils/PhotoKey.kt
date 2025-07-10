@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.maps
+package com.and04.naturealbum.ui.maps.utils
 
 import androidx.compose.runtime.Stable
 import com.and04.naturealbum.data.dto.FirebaseLabelResponse

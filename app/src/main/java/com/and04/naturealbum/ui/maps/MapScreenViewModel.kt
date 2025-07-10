@@ -11,6 +11,8 @@ import com.and04.naturealbum.data.repository.local.PhotoDetailRepository
 import com.and04.naturealbum.ui.maps.contract.MapEffect
 import com.and04.naturealbum.ui.maps.contract.MapIntent
 import com.and04.naturealbum.ui.maps.contract.MapState
+import com.and04.naturealbum.ui.maps.utils.toFriendPhotoItems
+import com.and04.naturealbum.ui.maps.utils.toPhotoItems
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel

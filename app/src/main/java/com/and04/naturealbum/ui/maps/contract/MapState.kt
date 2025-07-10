@@ -3,7 +3,7 @@ package com.and04.naturealbum.ui.maps.contract
 import android.graphics.PointF
 import androidx.compose.runtime.Immutable
 import com.and04.naturealbum.data.dto.FirebaseFriend
-import com.and04.naturealbum.ui.maps.PhotoItem
+import com.and04.naturealbum.ui.maps.utils.PhotoItem
 import com.and04.naturealbum.utils.network.NetworkState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
