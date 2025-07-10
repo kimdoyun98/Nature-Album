@@ -178,6 +178,7 @@ dependencies {
     implementation(libs.orbit.viewmodel)
     implementation(libs.orbit.compose)
 
+    implementation(libs.kotlinx.collections.immutable.v037)
 }
 
 kapt {

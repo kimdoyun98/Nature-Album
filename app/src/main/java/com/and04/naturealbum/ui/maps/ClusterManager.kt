@@ -2,6 +2,7 @@ package com.and04.naturealbum.ui.maps
 
 import android.graphics.PointF
 import androidx.annotation.IntRange
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
@@ -19,7 +20,10 @@ import com.naver.maps.map.overlay.Align
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.Overlay
 import com.naver.maps.map.overlay.OverlayImage
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
+@Stable
 class ClusterManager(
     private val colorRange: ColorRange,
     private val onClusterClick: (MarkerInfo) -> Overlay.OnClickListener,
@@ -107,7 +111,7 @@ class ClusterManager(
 
         fun getList(
             onIntent: (MapIntent) -> Unit,
-        ): List<ClusterManager> =
+        ): ImmutableList<ClusterManager> =
             ColorRange.entries.map { colorRange ->
                 ClusterManager(
                     colorRange = colorRange,
@@ -116,7 +120,7 @@ class ClusterManager(
                             val bottomSheetPhotos = info.tag as List<PhotoItem>
                             onIntent(
                                 MapIntent.ClusterClicked(
-                                    bottomSheetPhotos = bottomSheetPhotos,
+                                    bottomSheetPhotos = bottomSheetPhotos.toImmutableList(),
                                     pick = bottomSheetPhotos
                                         .groupBy { photoItem -> photoItem.label }
                                         .maxBy { (_, photoItems) -> photoItems.size }.value
@@ -130,12 +134,12 @@ class ClusterManager(
                         val changedCluster = info.tag as List<PhotoItem>
                         if (changedCluster.contains(pick)) {
                             onIntent(
-                                MapIntent.ClusterChanged(bottomSheetPhotos = changedCluster)
+                                MapIntent.ClusterChanged(bottomSheetPhotos = changedCluster.toImmutableList())
                             )
                         }
                     }
                 )
-            }
+            }.toImmutableList()
 
 
         private fun sizeToTint(

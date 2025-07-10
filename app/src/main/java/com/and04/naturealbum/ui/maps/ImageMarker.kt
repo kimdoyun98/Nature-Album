@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import androidx.compose.runtime.Stable
 import androidx.constraintlayout.widget.ConstraintLayout
 import coil3.load
 import coil3.request.error
@@ -13,6 +14,7 @@ import coil3.transform.CircleCropTransformation
 import com.and04.naturealbum.R
 import com.and04.naturealbum.databinding.ImageMarkerBinding
 
+@Stable
 class ImageMarker @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

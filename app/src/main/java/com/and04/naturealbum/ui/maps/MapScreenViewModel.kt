@@ -14,6 +14,10 @@ import com.and04.naturealbum.ui.maps.contract.MapState
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -46,7 +50,7 @@ class MapScreenViewModel @Inject constructor(
             }
 
             is MapIntent.InitMap -> {
-                reduce { state.copy(pick = null, bottomSheetPhotos = emptyList()) }
+                reduce { state.copy(pick = null, bottomSheetPhotos = persistentListOf()) }
 
                 postSideEffect(MapEffect.PickChanged)
             }
@@ -145,10 +149,10 @@ class MapScreenViewModel @Inject constructor(
         viewModelScope.launch {
             val fetchPhotos = async { photoDetailRepository.getAllPhotoDetail() }
             val fetchLabels = labelRepository.getLabels()
-            val myPhotos = fetchPhotos.await().toPhotoItems(fetchLabels)
+            val myPhotos = fetchPhotos.await().toPhotoItems(fetchLabels).toImmutableList()
 
             reduce {
-                state.copy(photosByUid = mapOf("" to myPhotos))
+                state.copy(photosByUid = persistentMapOf("" to myPhotos))
             }
 
             postSideEffect(MapEffect.PhotosByUidChanged)
@@ -168,7 +172,7 @@ class MapScreenViewModel @Inject constructor(
                             }
 
                 reduce {
-                    state.copy(photosByUid = photosMap)
+                    state.copy(photosByUid = photosMap.toImmutableMap())
                 }
 
                 postSideEffect(MapEffect.PhotosByUidChanged)
@@ -183,7 +187,7 @@ class MapScreenViewModel @Inject constructor(
         friendRepository.getFriendsAsFlow(uid)
             .onEach { friends ->
                 reduce {
-                    state.copy(friends = friends)
+                    state.copy(friends = friends.toImmutableList())
                 }
             }
             .launchIn(viewModelScope)

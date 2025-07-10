@@ -64,6 +64,7 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.Overlay
 import com.naver.maps.map.overlay.OverlayImage
+import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun MapScreen(
@@ -74,31 +75,33 @@ fun MapScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
-    val marker = remember {
-        Marker().apply {
-            onClickListener = Overlay.OnClickListener {
-                onIntent(MapIntent.MarkerClicked)
-                true
-            }
-        }
-    }
-    val clusterManagers: List<ClusterManager> =
+    val clusterManagers =
         remember {
             ClusterManager.getList(
                 onIntent = onIntent
             )
         }
-    val mapView = remember {
-        mapViewSettings(MapView(context), clusterManagers) {
-            onIntent(MapIntent.InitMap.MapClicked)
-        }
-    }
-    val imageMarker = remember {
-        ImageMarker(context).apply {
-            visibility = View.INVISIBLE
-            mapView.addView(this)
+
+    val mapInfo = remember {
+        MapInfo(
+            mapViewSettings(MapView(context), clusterManagers) {
+                onIntent(MapIntent.InitMap.MapClicked)
+            }
+        ).apply {
+            setMarker(
+                marker = Marker().apply {
+                    onClickListener = Overlay.OnClickListener {
+                        onIntent(MapIntent.MarkerClicked)
+                        true
+                    }
+                },
+
+                imageMarker = ImageMarker(context).apply {
+                    visibility = View.INVISIBLE
+                    mapView.addView(this)
+                }
+            )
         }
     }
 
@@ -107,18 +110,15 @@ fun MapScreen(
         onIntent = onIntent,
         navigateToHome = navigateToHome,
         state = state,
-        mapView = mapView,
-        marker = marker,
-        imageMarker = imageMarker,
+        mapInfo = mapInfo,
         clusterManagers = clusterManagers,
-        lifecycleOwner = lifecycleOwner
     )
 
     NatureAlbumMap(
         modifier = modifier,
         state = state,
         onIntent = onIntent,
-        mapView = mapView,
+        mapInfo = mapInfo,
     )
 }
 
@@ -127,14 +127,14 @@ private fun NatureAlbumMap(
     modifier: Modifier,
     state: () -> MapState,
     onIntent: (MapIntent) -> Unit,
-    mapView: MapView,
+    mapInfo: MapInfo,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (state().networkState == NetworkState.DISCONNECTED) {
             NetworkDisconnectContent()
         } else {
             // AndroidView를 MapView로 바로 설정
-            AndroidView(factory = { mapView }, modifier = modifier.fillMaxSize())
+            AndroidView(factory = { mapInfo.mapView }, modifier = modifier.fillMaxSize())
 
             if (UserManager.isSignIn()) {
                 IconButton(
@@ -225,12 +225,11 @@ private fun EffectCollection(
     state: () -> MapState,
     onIntent: (MapIntent) -> Unit,
     navigateToHome: () -> Unit,
-    mapView: MapView,
-    marker: Marker,
-    imageMarker: ImageMarker,
-    clusterManagers: List<ClusterManager>,
-    lifecycleOwner: LifecycleOwner,
+    mapInfo: MapInfo,
+    clusterManagers: ImmutableList<ClusterManager>,
 ) {
+    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+
     sideEffect { effect ->
         when (effect) {
             is MapEffect.NavigateHome -> {
@@ -238,7 +237,7 @@ private fun EffectCollection(
             }
 
             is MapEffect.CameraPivotChanged -> {
-                mapView.getMapAsync { naverMap ->
+                mapInfo.mapView.getMapAsync { naverMap ->
                     state().pick?.let { pick ->
                         naverMap.moveCamera(
                             CameraUpdate.scrollTo(pick.position).pivot(state().cameraPivot)
@@ -249,16 +248,16 @@ private fun EffectCollection(
             }
 
             is MapEffect.PickChanged -> {
-                mapView.getMapAsync { naverMap ->
-                    marker.map = state().pick?.let { pick ->
+                mapInfo.mapView.getMapAsync { naverMap ->
+                    mapInfo.marker.map = state().pick?.let { pick ->
                         naverMap.moveCamera(
                             CameraUpdate.scrollTo(pick.position).pivot(state().cameraPivot)
                                 .animate(CameraAnimation.Easing, 500)
                         )
-                        imageMarker.loadImage(pick.uri) {
-                            marker.icon = OverlayImage.fromView(imageMarker)
+                        mapInfo.imageMarker.loadImage(pick.uri) {
+                            mapInfo.marker.icon = OverlayImage.fromView(mapInfo.imageMarker)
                         }
-                        marker.position = pick.position
+                        mapInfo.marker.position = pick.position
                         naverMap
                     }
                 }
@@ -283,7 +282,7 @@ private fun EffectCollection(
                             include(photoItem.position)
                         }
                     }.build()
-                    mapView.getMapAsync { naverMap ->
+                    mapInfo.mapView.getMapAsync { naverMap ->
                         naverMap.moveCamera(
                             CameraUpdate.fitBounds(bound, 300).animate(CameraAnimation.Easing, 500)
                         )
@@ -299,16 +298,16 @@ private fun EffectCollection(
         val observer = object : LifecycleEventObserver {
             override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
                 when (event) {
-                    Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
-                    Lifecycle.Event.ON_START -> mapView.onStart()
-                    Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                    Lifecycle.Event.ON_STOP -> mapView.onStop()
+                    Lifecycle.Event.ON_CREATE -> mapInfo.mapView.onCreate(null)
+                    Lifecycle.Event.ON_START -> mapInfo.mapView.onStart()
+                    Lifecycle.Event.ON_RESUME -> mapInfo.mapView.onResume()
+                    Lifecycle.Event.ON_PAUSE -> mapInfo.mapView.onPause()
+                    Lifecycle.Event.ON_STOP -> mapInfo.mapView.onStop()
                     Lifecycle.Event.ON_DESTROY -> {
                         clusterManagers.forEach { cluster ->
                             cluster.clear()
                         }
-                        mapView.onDestroy()
+                        mapInfo.mapView.onDestroy()
                         lifecycle.removeObserver(this)
                     }
 
@@ -333,7 +332,7 @@ private fun EffectCollection(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhotoGrid(
-    photos: List<PhotoItem>,
+    photos: ImmutableList<PhotoItem>,
     columnCount: Int = 3,
     modifier: Modifier = Modifier,
     onPhotoClick: (PhotoItem) -> Unit,
@@ -402,7 +401,7 @@ private fun PhotoGrid(
 
 private fun mapViewSettings(
     mapview: MapView,
-    clusterManagers: List<ClusterManager>,
+    clusterManagers: ImmutableList<ClusterManager>,
     onMapClick: () -> Unit
 ): MapView {
     return mapview.apply {

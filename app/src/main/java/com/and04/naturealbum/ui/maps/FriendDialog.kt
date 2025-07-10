@@ -47,18 +47,21 @@ import com.and04.naturealbum.R
 import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.data.dto.FirestoreUser
 import com.and04.naturealbum.ui.theme.NatureAlbumTheme
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 const val USER_SELECT_MAX = 4
 
 @Composable
 fun FriendDialog(
     isOpen: Boolean = false,
-    friends: List<FirebaseFriend> = emptyList(),
-    selectedFriends: List<FirebaseFriend> = emptyList(),
+    friends: ImmutableList<FirebaseFriend> = persistentListOf(),
+    selectedFriends: ImmutableList<FirebaseFriend> = persistentListOf(),
     userSelectMax: Int = USER_SELECT_MAX,
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
-    onConfirm: (List<FirebaseFriend>) -> Unit = {}
+    onConfirm: (ImmutableList<FirebaseFriend>) -> Unit = {}
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     var checkedFriends by remember { mutableStateOf<List<FirebaseFriend>>(selectedFriends) }
@@ -153,7 +156,7 @@ fun FriendDialog(
 
                     Spacer(modifier = Modifier.size(8.dp))
 
-                    TextButton(onClick = { onConfirm(checkedFriends) }) {
+                    TextButton(onClick = { onConfirm(checkedFriends.toImmutableList()) }) {
                         Text(
                             text = stringResource(R.string.map_friend_dialog_confirm_btn),
                             style = MaterialTheme.typography.labelLarge,
@@ -230,7 +233,7 @@ private fun MinimumDialogPreView() {
     NatureAlbumTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             FriendDialog(
-                friends = friends
+                friends = friends.toImmutableList()
             )
         }
     }
@@ -253,8 +256,8 @@ private fun FullDialogPreView() {
     NatureAlbumTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             FriendDialog(
-                friends = friends,
-                selectedFriends = selectedFriends,
+                friends = friends.toImmutableList(),
+                selectedFriends = selectedFriends.toImmutableList(),
             )
         }
     }

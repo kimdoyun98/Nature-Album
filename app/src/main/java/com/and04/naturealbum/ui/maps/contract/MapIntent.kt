@@ -2,38 +2,39 @@ package com.and04.naturealbum.ui.maps.contract
 
 import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.ui.maps.PhotoItem
+import kotlinx.collections.immutable.ImmutableList
 
 sealed interface MapIntent {
-    data object BackButtonClicked: MapIntent
+    data object BackButtonClicked : MapIntent
 
     data class PickChanged(val pick: PhotoItem?) : MapIntent
 
     data class ClusterClicked(
         val pick: PhotoItem?,
-        val bottomSheetPhotos: List<PhotoItem>
+        val bottomSheetPhotos: ImmutableList<PhotoItem>
     ) : MapIntent
 
     data class ClusterChanged(
-        val bottomSheetPhotos: List<PhotoItem>
-    ): MapIntent
+        val bottomSheetPhotos: ImmutableList<PhotoItem>
+    ) : MapIntent
 
-    sealed class InitMap: MapIntent {
-        data object MapClicked: InitMap()
-        data object BackButtonClicked: InitMap()
-        data object FriendsReload: InitMap()
+    sealed class InitMap : MapIntent {
+        data object MapClicked : InitMap()
+        data object BackButtonClicked : InitMap()
+        data object FriendsReload : InitMap()
     }
 
-    data object MarkerClicked: MapIntent
+    data object MarkerClicked : MapIntent
 
-    data object FriendIconClicked: MapIntent
+    data object FriendIconClicked : MapIntent
 
-    data class BottomSheetStateChanged(val isCollapsed: Boolean): MapIntent
+    data class BottomSheetStateChanged(val isCollapsed: Boolean) : MapIntent
 
-    data object PhotoContentDisMiss: MapIntent
+    data object PhotoContentDisMiss : MapIntent
 
-    data class PhotoClicked(val photo: PhotoItem, val isDoubleClicked: Boolean): MapIntent
+    data class PhotoClicked(val photo: PhotoItem, val isDoubleClicked: Boolean) : MapIntent
 
-    data object FriendDialogDisMiss: MapIntent
+    data object FriendDialogDisMiss : MapIntent
 
-    data class FriendDialogConfirm(val friends: List<FirebaseFriend>): MapIntent
+    data class FriendDialogConfirm(val friends: ImmutableList<FirebaseFriend>) : MapIntent
 }

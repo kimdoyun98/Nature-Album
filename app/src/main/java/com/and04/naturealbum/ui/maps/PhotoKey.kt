@@ -1,5 +1,6 @@
 package com.and04.naturealbum.ui.maps
 
+import androidx.compose.runtime.Stable
 import com.and04.naturealbum.data.dto.FirebaseLabelResponse
 import com.and04.naturealbum.data.dto.FirebasePhotoInfoResponse
 import com.and04.naturealbum.data.localdata.room.Label
@@ -7,6 +8,8 @@ import com.and04.naturealbum.data.localdata.room.PhotoDetail
 import com.and04.naturealbum.utils.time.toLocalDateTime
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.clustering.ClusteringKey
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import java.time.LocalDateTime
 
 class PhotoKey(photoItem: PhotoItem) : ClusteringKey {
@@ -28,6 +31,7 @@ data class LabelItem(
     val color: String,
 )
 
+@Stable
 data class PhotoItem(
     val uri: String,
     val position: LatLng,
@@ -51,7 +55,7 @@ fun List<PhotoDetail>.toPhotoItems(labels: List<Label>): List<PhotoItem> {
 
 // FireBase Data -> UI Data
 fun FirebaseLabelResponse.toLabelItem() = LabelItem(labelName, backgroundColor)
-fun List<FirebasePhotoInfoResponse>.toFriendPhotoItems(labels: List<FirebaseLabelResponse>): List<PhotoItem> {
+fun List<FirebasePhotoInfoResponse>.toFriendPhotoItems(labels: List<FirebaseLabelResponse>): ImmutableList<PhotoItem> {
     val labelMap =
         labels.associate { firebaseLabel -> firebaseLabel.labelName to firebaseLabel.toLabelItem() }
     return mapNotNull { firebasePhotoInfo ->
@@ -66,5 +70,5 @@ fun List<FirebasePhotoInfoResponse>.toFriendPhotoItems(labels: List<FirebaseLabe
                 firebasePhotoInfo.datetime.toLocalDateTime()
             )
         }
-    }
+    }.toImmutableList()
 }
