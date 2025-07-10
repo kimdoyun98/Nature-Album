@@ -33,12 +33,12 @@ fun ButtonWithAnimation(
     selectAll: (Boolean) -> Unit,
     savePhotos: () -> Unit,
     deletePhotos: () -> Unit,
-    editMode: State<Boolean>,
+    editMode: Boolean,
     modifier: Modifier,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val transitionOffset by animateDpAsState(
-        targetValue = if (editMode.value) 0.dp else -screenWidth,
+        targetValue = if (editMode) 0.dp else -screenWidth,
         animationSpec = tween(durationMillis = 500), label = "button_animation"
     )
 
@@ -50,7 +50,7 @@ fun ButtonWithAnimation(
             modifier = Modifier
                 .offset(x = transitionOffset)
                 .fillMaxWidth()
-                .alpha(if (editMode.value) 1f else 0f) // editMode가 활성화 시 보이게 함
+                .alpha(if (editMode) 1f else 0f) // editMode가 활성화 시 보이게 함
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -73,10 +73,10 @@ fun ButtonWithAnimation(
         // 일반 모드 -> 빨간색 박스와 라벨
         Box(
             modifier = Modifier
-                .offset(x = if (editMode.value) screenWidth else 0.dp)
+                .offset(x = if (editMode) screenWidth else 0.dp)
                 .fillMaxWidth()
                 .background(Color.Black)
-                .alpha(if (!editMode.value) 1f else 0f)
+                .alpha(if (!editMode) 1f else 0f)
         ) {
 
         }

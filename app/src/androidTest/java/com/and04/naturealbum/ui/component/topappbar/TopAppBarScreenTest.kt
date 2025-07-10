@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import com.and04.naturealbum.ui.add.savephoto.SavePhotoScreen
 import com.and04.naturealbum.ui.add.savephoto.contract.SavePhotoState
 import com.and04.naturealbum.ui.album.labelphotos.LabelPhotosScreen
+import com.and04.naturealbum.ui.album.labelphotos.contract.LabelPhotosState
 import com.and04.naturealbum.ui.album.labels.AlbumScreen
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfo
 import com.and04.naturealbum.ui.home.HomeScreen
@@ -134,17 +135,10 @@ class TopAppBarScreenTest {
     fun 앨범_라벨_상세_화면() {
         composeTestRule.setContent {
             LabelPhotosScreen(
-                mutableStateOf(UiState.Idle),
-                { _ -> },
-                { _ -> },
-                mutableStateOf(false),
-                mutableStateOf(false),
-                {},
-                {},
-                {},
-                {},
-                mutableStateOf(emptySet()),
-                {}
+                state = { LabelPhotosState() },
+                onIntent = {},
+                savePhotos = { },
+                loadFolderData = {}
             )
         }
 
