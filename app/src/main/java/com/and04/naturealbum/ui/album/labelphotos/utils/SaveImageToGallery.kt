@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.album.labelphotos
+package com.and04.naturealbum.ui.album.labelphotos.utils
 
 import android.content.ContentResolver
 import android.content.ContentValues

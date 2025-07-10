@@ -58,8 +58,10 @@ import com.and04.naturealbum.R
 import com.and04.naturealbum.data.localdata.room.Label
 import com.and04.naturealbum.data.localdata.room.PhotoDetail
 import com.and04.naturealbum.data.model.AlbumFolderData
+import com.and04.naturealbum.ui.album.labelphotos.component.ButtonWithAnimation
 import com.and04.naturealbum.ui.album.labelphotos.contract.AlbumFolderState
 import com.and04.naturealbum.ui.album.labelphotos.contract.rememberAlbumFolderState
+import com.and04.naturealbum.ui.album.labelphotos.utils.saveImagesWithLoading
 import com.and04.naturealbum.ui.component.AlbumLabel
 import com.and04.naturealbum.ui.component.AppBarType
 import com.and04.naturealbum.ui.component.PermissionDialogState

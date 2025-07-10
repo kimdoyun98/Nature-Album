@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.album.labelphotos
+package com.and04.naturealbum.ui.album.labelphotos.component
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
