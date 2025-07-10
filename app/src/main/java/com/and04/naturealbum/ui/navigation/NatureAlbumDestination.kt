@@ -25,7 +25,7 @@ sealed class NavigateDestination(val route: String) : Destination {
     data object MyPage : NavigateDestination("my_page")
 
     @Serializable
-    data object AlbumFolder : NavigateDestination("album_folder")
+    data object LabelPhotos : NavigateDestination("label_photos")
 
     @Serializable
     data object PhotoInfo : NavigateDestination("photo_info")

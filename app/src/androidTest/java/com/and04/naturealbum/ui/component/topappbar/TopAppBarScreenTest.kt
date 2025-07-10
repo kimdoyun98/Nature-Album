@@ -5,10 +5,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.core.net.toUri
 import com.and04.naturealbum.ui.add.savephoto.SavePhotoScreen
 import com.and04.naturealbum.ui.add.savephoto.contract.SavePhotoState
-import com.and04.naturealbum.ui.album.labelphotos.AlbumFolderScreen
+import com.and04.naturealbum.ui.album.labelphotos.LabelPhotosScreen
 import com.and04.naturealbum.ui.album.labels.AlbumScreen
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfo
 import com.and04.naturealbum.ui.home.HomeScreen
@@ -23,7 +22,7 @@ class TopAppBarScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
-    
+
     @Test
     fun 홈_화면() {
         composeTestRule.setContent {
@@ -134,7 +133,7 @@ class TopAppBarScreenTest {
     @Test
     fun 앨범_라벨_상세_화면() {
         composeTestRule.setContent {
-            AlbumFolderScreen(
+            LabelPhotosScreen(
                 mutableStateOf(UiState.Idle),
                 { _ -> },
                 { _ -> },

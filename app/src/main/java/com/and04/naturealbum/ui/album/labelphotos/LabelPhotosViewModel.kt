@@ -14,7 +14,6 @@ import com.and04.naturealbum.utils.network.NetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -22,7 +21,7 @@ import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
-class AlbumFolderViewModel @Inject constructor(
+class LabelPhotosViewModel @Inject constructor(
     private val photoDetailRepository: PhotoDetailRepository,
     private val syncDataStore: DataStoreManager,
     private val albumRepository: AlbumRepository,

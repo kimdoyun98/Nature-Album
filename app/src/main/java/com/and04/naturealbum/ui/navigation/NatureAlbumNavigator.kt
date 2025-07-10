@@ -44,7 +44,7 @@ class NatureAlbumNavigator(
     }
 
     fun navigateToAlbumFolder(labelId: Int) {
-        navController.navigate("${NavigateDestination.AlbumFolder.route}/$labelId")
+        navController.navigate("${NavigateDestination.LabelPhotos.route}/$labelId")
     }
 
     fun navigateToAlbumInfo(photoDetailId: Int) {

@@ -58,6 +58,8 @@ import com.and04.naturealbum.R
 import com.and04.naturealbum.data.localdata.room.Label
 import com.and04.naturealbum.data.localdata.room.PhotoDetail
 import com.and04.naturealbum.data.model.AlbumFolderData
+import com.and04.naturealbum.ui.album.labelphotos.contract.AlbumFolderState
+import com.and04.naturealbum.ui.album.labelphotos.contract.rememberAlbumFolderState
 import com.and04.naturealbum.ui.component.AlbumLabel
 import com.and04.naturealbum.ui.component.AppBarType
 import com.and04.naturealbum.ui.component.PermissionDialogState
@@ -70,18 +72,18 @@ import com.and04.naturealbum.utils.color.toColor
 import com.and04.naturealbum.utils.gridColumnCount
 
 @Composable
-fun AlbumFolderScreen(
+fun LabelPhotosScreen(
     selectedAlbumLabel: Int = 0,
     onPhotoClick: (Int) -> Unit,
     onNavigateToMyPage: () -> Unit,
     navigateToBackScreen: () -> Unit,
     onNavigateToAlbum: () -> Unit,
     state: AlbumFolderState = rememberAlbumFolderState(),
-    albumFolderViewModel: AlbumFolderViewModel = hiltViewModel(),
+    labelPhotosViewModel: LabelPhotosViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
 
-    val uiState = albumFolderViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState = labelPhotosViewModel.uiState.collectAsStateWithLifecycle()
 
     val setLoading = { isImgDownLoading: Boolean -> state.imgDownLoading.value = isImgDownLoading }
     val switchEditMode = { isEditModeEnabled: Boolean ->
@@ -89,7 +91,7 @@ fun AlbumFolderScreen(
     }
 
     if (uiState.value is UiState.Idle) {
-        albumFolderViewModel.loadFolderData(selectedAlbumLabel)
+        labelPhotosViewModel.loadFolderData(selectedAlbumLabel)
     }
 
     val saveImagesWithLoading = {
@@ -138,11 +140,11 @@ fun AlbumFolderScreen(
     }
 
     val deletePhotos: () -> Unit = {
-        albumFolderViewModel.deletePhotos(state.checkList.value)
+        labelPhotosViewModel.deletePhotos(state.checkList.value)
         switchEditMode(false)
     }
 
-    AlbumFolderScreen(
+    LabelPhotosScreen(
         uiState = uiState,
         onPhotoClick = onPhotoClick,
         switchEditMode = switchEditMode,
@@ -167,7 +169,7 @@ fun AlbumFolderScreen(
 }
 
 @Composable
-fun AlbumFolderScreen(
+fun LabelPhotosScreen(
     uiState: State<UiState<AlbumFolderData>>,
     onPhotoClick: (Int) -> Unit,
     switchEditMode: (Boolean) -> Unit,
@@ -404,7 +406,7 @@ private fun AlbumFolderScreenPreview() {
         val selectAll = remember { mutableStateOf(false) }
         val checkList = remember { mutableStateOf<Set<PhotoDetail>>(setOf()) }
 
-        AlbumFolderScreen(
+        LabelPhotosScreen(
             uiState = uiState,
             onPhotoClick = { },
             switchEditMode = { _ -> },
