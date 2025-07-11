@@ -2,7 +2,9 @@ package com.and04.naturealbum.ui.maps.contract
 
 import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.ui.maps.utils.PhotoItem
+import com.and04.naturealbum.ui.maps.utils.PreloadState
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 
 sealed interface MapIntent {
     data object BackButtonClicked : MapIntent
@@ -37,4 +39,6 @@ sealed interface MapIntent {
     data object FriendDialogDisMiss : MapIntent
 
     data class FriendDialogConfirm(val friends: ImmutableList<FirebaseFriend>) : MapIntent
+
+    data class PreloadListener(val map: ImmutableMap<String, PreloadState>): MapIntent
 }

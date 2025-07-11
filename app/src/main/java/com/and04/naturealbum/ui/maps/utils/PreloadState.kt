@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.maps
+package com.and04.naturealbum.ui.maps.utils
 
 sealed interface PreloadState {
     data object Loading : PreloadState

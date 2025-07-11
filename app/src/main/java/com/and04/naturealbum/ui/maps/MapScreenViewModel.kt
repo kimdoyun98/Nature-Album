@@ -138,6 +138,10 @@ class MapScreenViewModel @Inject constructor(
 
                 fetchFriendsPhotos(intent.friends.map { friend -> friend.user.uid })
             }
+
+            is MapIntent.PreloadListener -> {
+                reduce { state.copy(preloadState = intent.map) }
+            }
         }
     }
 

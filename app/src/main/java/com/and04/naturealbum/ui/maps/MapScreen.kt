@@ -28,8 +28,6 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +67,7 @@ import com.and04.naturealbum.ui.maps.utils.ClusterManager
 import com.and04.naturealbum.ui.maps.utils.ImageMarker
 import com.and04.naturealbum.ui.maps.utils.MapInfo
 import com.and04.naturealbum.ui.maps.utils.PhotoItem
+import com.and04.naturealbum.ui.maps.utils.PreloadState
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.color.toColor
 import com.and04.naturealbum.utils.network.NetworkState
@@ -81,6 +80,8 @@ import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.Overlay
 import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 
 @Composable
@@ -122,9 +123,6 @@ fun MapScreen(
         }
     }
 
-    val preloadState = remember { hashMapOf<String, MutableState<PreloadState>>() }
-
-
     EffectCollection(
         sideEffect = sideEffect,
         onIntent = onIntent,
@@ -132,7 +130,6 @@ fun MapScreen(
         state = state,
         mapInfo = mapInfo,
         clusterManagers = clusterManagers,
-        preloadState = preloadState,
     )
 
     NatureAlbumMap(
@@ -140,7 +137,6 @@ fun MapScreen(
         state = state,
         onIntent = onIntent,
         mapInfo = mapInfo,
-        preloadState = preloadState,
     )
 }
 
@@ -150,7 +146,6 @@ private fun NatureAlbumMap(
     state: () -> MapState,
     onIntent: (MapIntent) -> Unit,
     mapInfo: MapInfo,
-    preloadState: HashMap<String, MutableState<PreloadState>>,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (state().networkState == NetworkState.DISCONNECTED) {
@@ -207,7 +202,7 @@ private fun NatureAlbumMap(
                             )
                         )
                     },
-                    preloadState = preloadState,
+                    preloadState = state().preloadState,
                 )
             }
 
@@ -251,7 +246,6 @@ private fun EffectCollection(
     navigateToHome: () -> Unit,
     mapInfo: MapInfo,
     clusterManagers: ImmutableList<ClusterManager>,
-    preloadState: HashMap<String, MutableState<PreloadState>>,
 ) {
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
@@ -301,7 +295,7 @@ private fun EffectCollection(
                 state().scope?.launch {
                     totalPhotos.forEach { photo ->
                         launch {
-                            preload(photo.uri, context, imageLoader, preloadState)
+                            preload(photo.uri, context, imageLoader, state().preloadState, onIntent)
                         }
                     }
                 }
@@ -376,7 +370,7 @@ private fun PhotoGrid(
     modifier: Modifier = Modifier,
     onPhotoClick: (PhotoItem) -> Unit,
     onPhotoDoubleClick: (PhotoItem) -> Unit,
-    preloadState: HashMap<String, MutableState<PreloadState>>,
+    preloadState: ImmutableMap<String, PreloadState>,
 ) {
     val groupByLabel =
         photos
@@ -412,7 +406,7 @@ private fun PhotoGrid(
                     modifier = modifier, horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     row.forEach { photo ->
-                        when (preloadState[photo.uri]?.value ?: PreloadState.Fail) {
+                        when (preloadState[photo.uri] ?: PreloadState.Fail) {
                             is PreloadState.Loading -> {
                                 Box(
                                     modifier = modifier
@@ -488,21 +482,26 @@ private fun preload(
     url: String,
     context: Context,
     imageLoader: ImageLoader,
-    preloadState: HashMap<String, MutableState<PreloadState>>,
+    preloadState: ImmutableMap<String, PreloadState>,
+    onIntent: (MapIntent) -> Unit,
 ) {
+    val map = preloadState.toMutableMap()
     val request = ImageRequest.Builder(context)
         .data(url)
         .listener(object : ImageRequest.Listener {
             override fun onStart(request: ImageRequest) {
-                preloadState.getOrPut(url) { mutableStateOf(PreloadState.Loading) }
+                map.getOrPut(url) { PreloadState.Loading }
+                onIntent(MapIntent.PreloadListener(map.toImmutableMap()))
             }
 
             override fun onSuccess(request: ImageRequest, result: SuccessResult) {
-                preloadState[url]?.value = PreloadState.Success
+                map[url] = PreloadState.Success
+                onIntent(MapIntent.PreloadListener(map.toImmutableMap()))
             }
 
             override fun onError(request: ImageRequest, result: ErrorResult) {
-                preloadState[url]?.value = PreloadState.Fail
+                map[url] = PreloadState.Fail
+                onIntent(MapIntent.PreloadListener(map.toImmutableMap()))
             }
         })
         .crossfade(true)
