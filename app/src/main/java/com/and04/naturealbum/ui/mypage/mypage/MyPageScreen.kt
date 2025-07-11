@@ -3,7 +3,6 @@ package com.and04.naturealbum.ui.mypage.mypage
 import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_NO
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -246,26 +245,12 @@ private fun UserProfileImage(uri: String?, modifier: Modifier) {
 private fun LoginContent(
     loginHandle: () -> Unit,
 ) {
-    val context = LocalContext.current
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .border(width = 1.dp, color = Color.Gray, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                if (NetworkState.getNetWorkCode() == NetworkState.DISCONNECTED) {
-                    Toast
-                        .makeText(
-                            context,
-                            R.string.my_page_login_no_network_message,
-                            Toast.LENGTH_SHORT
-                        )
-                        .show()
-                } else {
-                    loginHandle()
-                }
-            }
+            .clickable { loginHandle() }
     ) {
         Row(
             modifier = Modifier

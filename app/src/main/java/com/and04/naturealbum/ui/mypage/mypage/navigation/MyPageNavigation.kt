@@ -1,10 +1,12 @@
 package com.and04.naturealbum.ui.mypage.mypage.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
+import com.and04.naturealbum.NatureAlbum
 import com.and04.naturealbum.background.service.FirebaseMessagingService.Companion.MY_PAGE_URI
 import com.and04.naturealbum.ui.mypage.mypage.MyPageScreen
 import com.and04.naturealbum.ui.mypage.mypage.MyPageViewModel
@@ -34,6 +36,11 @@ fun NavGraphBuilder.myPageNavigation(
 
                 is MyPageEffect.FriendSearch -> {
                     navigator.navigateToFriendSearch()
+                }
+
+                is MyPageEffect.Toast -> {
+                    Toast.makeText(NatureAlbum.getInstance(), effect.message, Toast.LENGTH_LONG)
+                        .show()
                 }
             }
         }

@@ -14,6 +14,7 @@ import com.and04.naturealbum.ui.mypage.utils.AuthenticationManager
 import com.and04.naturealbum.ui.mypage.utils.LoginState
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.network.NetworkManager
+import com.and04.naturealbum.utils.network.NetworkState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
@@ -56,7 +57,11 @@ class MyPageViewModel @Inject constructor(
             }
 
             is MyPageIntent.LoginClicked -> {
-                signInWithGoogle(intent.context)
+                if (state.networkState != NetworkState.DISCONNECTED) {
+                    signInWithGoogle(intent.context)
+                } else {
+                    postSideEffect(MyPageEffect.Toast(intent.massage))
+                }
             }
 
             is MyPageIntent.SyncButtonClicked -> {
