@@ -1,6 +1,5 @@
 package com.and04.naturealbum.ui.mypage.friendsearch
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,65 +27,35 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.and04.naturealbum.R
 import com.and04.naturealbum.data.dto.FirestoreUserWithStatus
 import com.and04.naturealbum.data.dto.FriendStatus
 import com.and04.naturealbum.ui.mypage.component.NoNetworkSocialContent
+import com.and04.naturealbum.ui.mypage.friendsearch.contract.FriendSearchIntent
+import com.and04.naturealbum.ui.mypage.friendsearch.contract.FriendSearchState
 import com.and04.naturealbum.utils.network.NetworkState.DISCONNECTED
-import com.and04.naturealbum.utils.network.NetworkViewModel
+import kotlinx.collections.immutable.ImmutableMap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendSearchScreen(
-    onBack: () -> Unit,
-    friendViewModel: FriendViewModel,
-    networkViewModel: NetworkViewModel,
+    state: () -> FriendSearchState,
+    onIntent: (FriendSearchIntent) -> Unit,
 ) {
-    val context = LocalContext.current
-    val friendRequestStatus by friendViewModel.friendRequestStatus.collectAsStateWithLifecycle()
-    val userWithStatusList by friendViewModel.searchResults.collectAsStateWithLifecycle()
-    val networkState = networkViewModel.networkState.collectAsStateWithLifecycle()
-    var textFieldState by remember { mutableStateOf("") }
-    var expanded by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(friendRequestStatus) {
-        friendRequestStatus?.let { success ->
-            val message = if (success) {
-                context.getString(R.string.friend_search_screen_friend_request_success)
-            } else {
-                context.getString(R.string.friend_search_screen_friend_request_fail)
-            }
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            friendViewModel.setFriendRequestStatusNull()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        friendViewModel.updateSearchQuery("")
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.friend_search_screen_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { onIntent(FriendSearchIntent.BackButtonClicked) }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = null)
                     }
                 }
@@ -103,10 +72,17 @@ fun FriendSearchScreen(
                     .align(Alignment.CenterHorizontally),
                 inputField = {
                     SearchBarDefaults.InputField(
-                        query = textFieldState,
-                        onSearch = { expanded = false },
-                        expanded = expanded,
-                        onExpandedChange = { expandedChange -> expanded = expandedChange },
+                        query = state().searchQuery,
+                        onQueryChange = { query ->
+                            onIntent(FriendSearchIntent.QueryChanged(query))
+                        },
+                        onSearch = {
+                            onIntent(FriendSearchIntent.ExpandedChanged(false))
+                        },
+                        expanded = state().expanded,
+                        onExpandedChange = { expandedChange ->
+                            onIntent(FriendSearchIntent.ExpandedChanged(expandedChange))
+                        },
                         placeholder = {
                             Text(text = stringResource(R.string.my_page_search_hint))
                         },
@@ -116,35 +92,33 @@ fun FriendSearchScreen(
                                 contentDescription = stringResource(R.string.my_page_search_bar_search_icon)
                             )
                         },
-                        onQueryChange = { query ->
-                            textFieldState = query
-                            friendViewModel.updateSearchQuery(query)
-                        },
                     )
                 },
                 expanded = false,
-                onExpandedChange = {
-                },
+                onExpandedChange = {},
             ) {
             }
 
-            if (networkState.value == DISCONNECTED) {
-                NoNetworkSocialContent()
-            } else {
-                RequestedList(
-                    userWithStatusList = userWithStatusList,
-                    sendFriendRequest = friendViewModel::sendFriendRequest
-                )
-            }
+            RequestedList(
+                userWithStatusList = state().searchResult,
+                networkState = state().networkState,
+                onIntent = onIntent,
+            )
         }
     }
 }
 
 @Composable
 fun RequestedList(
-    userWithStatusList: Map<String, FirestoreUserWithStatus>,
-    sendFriendRequest: (String) -> Unit,
+    userWithStatusList: ImmutableMap<String, FirestoreUserWithStatus>,
+    networkState: Int,
+    onIntent: (FriendSearchIntent) -> Unit,
 ) {
+    if (networkState == DISCONNECTED) {
+        NoNetworkSocialContent()
+        return
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -168,7 +142,7 @@ fun RequestedList(
             items(userWithStatusList.entries.toList(), key = { entry -> entry.key }) { entry ->
                 RequestedItem(
                     userWithStatus = entry.value,
-                    sendFriendRequest = sendFriendRequest
+                    onClick = { id -> onIntent(FriendSearchIntent.FriendRequestSend(id)) }
                 )
             }
         }
@@ -176,9 +150,9 @@ fun RequestedList(
 }
 
 @Composable
-fun RequestedItem(
+private fun RequestedItem(
     userWithStatus: FirestoreUserWithStatus,
-    sendFriendRequest: (String) -> Unit,
+    onClick: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -213,7 +187,7 @@ fun RequestedItem(
             SuggestionChip(
                 onClick = {
                     if (userWithStatus.status == FriendStatus.NORMAL) {
-                        sendFriendRequest(userWithStatus.user.uid)
+                        onClick(userWithStatus.user.uid)
                     }
                 },
                 enabled = userWithStatus.status == FriendStatus.NORMAL,
