@@ -9,6 +9,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.CoroutineScope
 
 @Immutable
 data class MapState(
@@ -21,4 +22,5 @@ data class MapState(
     val bottomSheetPhotos: ImmutableList<PhotoItem> = persistentListOf(),
     val selectedFriends: ImmutableList<FirebaseFriend> = persistentListOf(),
     val cameraPivot: PointF = PointF(0.5f, 0.5f),
+    val scope: CoroutineScope? = null
 )

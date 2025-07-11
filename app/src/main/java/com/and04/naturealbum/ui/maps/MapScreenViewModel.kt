@@ -43,6 +43,10 @@ class MapScreenViewModel @Inject constructor(
     init {
         checkNetwork()
         initPhotos()
+
+        intent {
+            reduce { state.copy(scope = viewModelScope) }
+        }
     }
 
     fun onIntent(intent: MapIntent) = intent {
