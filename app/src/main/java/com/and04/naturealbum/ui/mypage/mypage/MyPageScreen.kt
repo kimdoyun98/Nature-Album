@@ -109,7 +109,7 @@ fun MyPageScreen(
     ) { innerPadding ->
         MyPageContent(
             modifier = Modifier.padding(innerPadding),
-            state = state,
+            state = state(),
             onIntent = onIntent,
             snackBarHostState = snackBarHostState,
         )
@@ -119,7 +119,7 @@ fun MyPageScreen(
 @Composable
 private fun MyPageContent(
     modifier: Modifier,
-    state: () -> MyPageState,
+    state: MyPageState,
     onIntent: (MyPageIntent) -> Unit,
     snackBarHostState: SnackbarHostState,
 ) {
@@ -136,77 +136,65 @@ private fun MyPageContent(
             },
         )
     }
-    when (val loginState = state().loginState) {
-        is LoginState.Login -> {
-            Column(
-                modifier = modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(32.dp),
-            ) {
+
+    Column(
+        modifier = modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(32.dp),
+    ) {
+        when (val loginState = state.loginState) {
+            is LoginState.Login -> {
                 UserProfileContent(
                     userInfo = loginState.userInfo,
-                    snackBarHostState = snackBarHostState,
-                    recentSyncTime = state().recentSyncTime,
-                    syncWorking = state().isSyncWorking,
-                    networkState = state().networkState,
-                    onIntent = onIntent,
                 )
 
-                if (state().networkState == DISCONNECTED) {
-                    NoNetworkSocialContent()
-                } else {
-                    SocialContent(
-                        modifier = Modifier.weight(1f),
-                        friends = state().friends,
-                        friendRequests = state().receivedFriendRequests,
-                        navigateToFriendSearchScreen = {
-                            onIntent(MyPageIntent.FriendSearchClicked)
-                        },
-                        acceptFriendRequest = { uid ->
-                            onIntent(MyPageIntent.FriendRequestAccept(uid))
-                        },
-                        rejectFriendRequest = { uid ->
-                            onIntent(MyPageIntent.FriendRequestReject(uid))
-                        },
-                    )
+                SyncContent(
+                    snackBarHostState = snackBarHostState,
+                    recentSyncTime = state.recentSyncTime,
+                    isSyncWorking = state.isSyncWorking,
+                    onClick = { onIntent(MyPageIntent.SyncButtonClicked) }
+                )
+
+                SocialContent(
+                    friends = state.friends,
+                    friendRequests = state.receivedFriendRequests,
+                    networkState = state.networkState,
+                    navigateToFriendSearchScreen = {
+                        onIntent(MyPageIntent.FriendSearchClicked)
+                    },
+                    acceptFriendRequest = { uid ->
+                        onIntent(MyPageIntent.FriendRequestAccept(uid))
+                    },
+                    rejectFriendRequest = { uid ->
+                        onIntent(MyPageIntent.FriendRequestReject(uid))
+                    },
+                )
+
+                LaunchedEffect(Unit) {
+                    permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
                 }
             }
 
-            LaunchedEffect(Unit) {
-                permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
-            }
-        }
+            is LoginState.Logout, LoginState.LoginLoading -> {
+                Box {
+                    ProgressIndicator(state.loginState is LoginState.LoginLoading)
+                }
 
-        is LoginState.Logout, LoginState.LoginLoading -> {
-            Box {
-                ProgressIndicator(state().loginState is LoginState.LoginLoading)
-            }
-
-            Column(
-                modifier = modifier,
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(32.dp),
-            ) {
                 UserProfileContent()
+
                 LoginContent(
                     loginHandle = { onIntent(MyPageIntent.LoginClicked(context)) }
                 )
             }
         }
     }
-
 }
 
 @Composable
 private fun UserProfileContent(
     userInfo: UserInfo? = null,
-    snackBarHostState: SnackbarHostState? = null,
-    recentSyncTime: String? = null,
-    networkState: Int = 0,
-    syncWorking: Boolean = false,
-    onIntent: (MyPageIntent) -> Unit = {}
 ) {
     val uri = userInfo?.userPhotoUri ?: ""
     val email = userInfo?.userEmail ?: stringResource(R.string.my_page_default_user_email)
@@ -235,15 +223,6 @@ private fun UserProfileContent(
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-
-        if (snackBarHostState != null && networkState != DISCONNECTED) {
-            SyncContent(
-                snackBarHostState = snackBarHostState,
-                recentSyncTime = recentSyncTime!!,
-                syncWorking = syncWorking,
-                onClick = { onIntent(MyPageIntent.SyncButtonClicked) }
-            )
-        }
     }
 }
 
@@ -267,69 +246,61 @@ private fun UserProfileImage(uri: String?, modifier: Modifier) {
 private fun LoginContent(
     loginHandle: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = Color.Gray, shape = RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .clickable {
+                if (NetworkState.getNetWorkCode() == NetworkState.DISCONNECTED) {
+                    Toast
+                        .makeText(
+                            context,
+                            R.string.my_page_login_no_network_message,
+                            Toast.LENGTH_SHORT
+                        )
+                        .show()
+                } else {
+                    loginHandle()
+                }
+            }
     ) {
-        val context = LocalContext.current
-
-        Text(
-            text = stringResource(R.string.my_page_login_txt),
-            textAlign = TextAlign.Left
-        )
-
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = Color.Gray,
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    if (NetworkState.getNetWorkCode() == NetworkState.DISCONNECTED) {
-                        Toast
-                            .makeText(
-                                context,
-                                context.getString(R.string.my_page_login_no_network_message),
-                                Toast.LENGTH_SHORT
-                            )
-                            .show()
-                    } else {
-                        loginHandle()
-                    }
-                }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Center,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Image(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_google_login),
-                    contentDescription = null,
-                )
+            Image(
+                imageVector = ImageVector.vectorResource(R.drawable.ic_google_login),
+                contentDescription = null,
+            )
 
-                Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(24.dp))
 
-                Text(text = stringResource(R.string.my_page_google_login_btn))
-            }
+            Text(text = stringResource(R.string.my_page_google_login_btn))
         }
     }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SocialContent(
-    modifier: Modifier,
     friends: ImmutableList<FirebaseFriend>,
     friendRequests: ImmutableList<FirebaseFriendRequest>,
+    networkState: Int,
     navigateToFriendSearchScreen: () -> Unit,
     acceptFriendRequest: (String) -> Unit,
     rejectFriendRequest: (String) -> Unit,
 ) {
+    if (networkState == DISCONNECTED) {
+        NoNetworkSocialContent()
+        return
+    }
+
     val friendRequestsCount = friendRequests.size
 
     var tabState by remember { mutableIntStateOf(SOCIAL_LIST_TAB_INDEX) }
@@ -340,9 +311,7 @@ private fun SocialContent(
         stringResource(R.string.my_page_social_alarm)
     )
 
-    Column(
-        modifier = modifier
-    ) {
+    Column {
         PrimaryTabRow(selectedTabIndex = tabState) {
             titles.forEachIndexed { index, title ->
                 MyPageCustomTab(tabState, index, title, friendRequestsCount) {
@@ -403,62 +372,66 @@ private fun MyPageCustomTab(
 private fun SyncContent(
     snackBarHostState: SnackbarHostState,
     recentSyncTime: String,
-    syncWorking: Boolean,
+    isSyncWorking: Boolean,
     onClick: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    Row(
-        modifier = Modifier.padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.my_page_sync))
-        IconButton(
-            modifier = Modifier.size(24.dp),
-            onClick = {
-                when (NetworkState.getNetWorkCode()) {
-                    CONNECTED_WIFI -> {
-                        SynchronizationWorker.runImmediately(context)
-                        onClick()
-                    }
+        Row(
+            modifier = Modifier.padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(stringResource(R.string.my_page_sync))
+            IconButton(
+                modifier = Modifier.size(24.dp),
+                onClick = {
+                    when (NetworkState.getNetWorkCode()) {
+                        CONNECTED_WIFI -> {
+                            SynchronizationWorker.runImmediately(context)
+                            onClick()
+                        }
 
-                    CONNECTED_DATA -> {
-                        startSnackBar(
-                            context = context,
-                            coroutineScope = coroutineScope,
-                            snackBarHostState = snackBarHostState,
-                            message = context.getString(R.string.my_page_snackbar_network_state_data_keep_going),
-                            actionLabel = context.getString(R.string.my_page_snackbar_confirm_button),
-                            onClickActionPerformed = { onClick() }
-                        )
-                    }
+                        CONNECTED_DATA -> {
+                            startSnackBar(
+                                context = context,
+                                coroutineScope = coroutineScope,
+                                snackBarHostState = snackBarHostState,
+                                message = context.getString(R.string.my_page_snackbar_network_state_data_keep_going),
+                                actionLabel = context.getString(R.string.my_page_snackbar_confirm_button),
+                                onClickActionPerformed = { onClick() }
+                            )
+                        }
 
-                    DISCONNECTED -> {
-                        startSnackBar(
-                            context = context,
-                            coroutineScope = coroutineScope,
-                            snackBarHostState = snackBarHostState,
-                            message = context.getString(R.string.my_page_snackbar_network_state_disconnect),
-                            actionLabel = null
-                        )
+                        DISCONNECTED -> {
+                            startSnackBar(
+                                context = context,
+                                coroutineScope = coroutineScope,
+                                snackBarHostState = snackBarHostState,
+                                message = context.getString(R.string.my_page_snackbar_network_state_disconnect),
+                                actionLabel = null
+                            )
+                        }
                     }
                 }
+            ) {
+                RotatingButton(
+                    rotatingState = isSyncWorking,
+                    imageVector = Icons.Default.Sync,
+                    contentDescription = stringResource(R.string.my_page_sync_icon_content_description)
+                )
             }
-        ) {
-            RotatingButton(
-                rotatingState = syncWorking,
-                imageVector = Icons.Default.Sync,
-                contentDescription = stringResource(R.string.my_page_sync_icon_content_description)
-            )
         }
-    }
-    Text(
-        style = MaterialTheme.typography.bodySmall,
-        text = recentSyncTime
-    )
 
+        Text(
+            style = MaterialTheme.typography.bodySmall,
+            text = recentSyncTime
+        )
+    }
 }
 
 private fun startSnackBar(
