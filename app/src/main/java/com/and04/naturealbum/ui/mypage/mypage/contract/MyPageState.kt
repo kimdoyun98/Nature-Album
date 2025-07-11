@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.mypage.contract
+package com.and04.naturealbum.ui.mypage.mypage.contract
 
 import androidx.compose.runtime.Immutable
 import com.and04.naturealbum.data.dto.FirebaseFriend

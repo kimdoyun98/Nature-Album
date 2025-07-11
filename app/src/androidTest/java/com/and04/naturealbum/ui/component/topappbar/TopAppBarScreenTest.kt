@@ -13,8 +13,8 @@ import com.and04.naturealbum.ui.album.labels.contract.LabelsState
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfoScreen
 import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoState
 import com.and04.naturealbum.ui.home.HomeScreen
-import com.and04.naturealbum.ui.mypage.MyPageScreen
-import com.and04.naturealbum.ui.mypage.contract.MyPageState
+import com.and04.naturealbum.ui.mypage.mypage.MyPageScreen
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.utils.LocationHandler
 import org.junit.Rule
 import org.junit.Test

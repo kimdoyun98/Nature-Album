@@ -16,7 +16,7 @@ import com.and04.naturealbum.ui.album.photoinfo.navigation.photoInfoNavigation
 import com.and04.naturealbum.ui.home.navigation.homeNavGraph
 import com.and04.naturealbum.ui.maps.navigation.mapNavigation
 import com.and04.naturealbum.ui.mypage.friendsearch.navigation.friendSearchNavigation
-import com.and04.naturealbum.ui.mypage.navigation.myPageNavigation
+import com.and04.naturealbum.ui.mypage.mypage.navigation.myPageNavigation
 
 @Composable
 fun NatureAlbumNavHost(

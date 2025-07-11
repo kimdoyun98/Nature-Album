@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.mypage
+package com.and04.naturealbum.ui.mypage.mypage
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.and04.naturealbum.background.workmanager.SynchronizationWorker
 import com.and04.naturealbum.data.localdata.datastore.DataStoreManager
 import com.and04.naturealbum.data.repository.firebase.FriendRepository
-import com.and04.naturealbum.ui.mypage.contract.MyPageEffect
-import com.and04.naturealbum.ui.mypage.contract.MyPageIntent
-import com.and04.naturealbum.ui.mypage.contract.MyPageState
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageEffect
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageIntent
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.mypage.utils.AuthResponse
 import com.and04.naturealbum.ui.mypage.utils.AuthenticationManager
 import com.and04.naturealbum.ui.mypage.utils.LoginState

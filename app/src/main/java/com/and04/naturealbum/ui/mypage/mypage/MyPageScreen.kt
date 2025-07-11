@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.mypage
+package com.and04.naturealbum.ui.mypage.mypage
 
 import android.content.Context
 import android.content.res.Configuration.UI_MODE_NIGHT_NO
@@ -70,8 +70,8 @@ import com.and04.naturealbum.ui.component.AppBarType
 import com.and04.naturealbum.ui.component.ProgressIndicator
 import com.and04.naturealbum.ui.component.RotatingButton
 import com.and04.naturealbum.ui.mypage.component.NoNetworkSocialContent
-import com.and04.naturealbum.ui.mypage.contract.MyPageIntent
-import com.and04.naturealbum.ui.mypage.contract.MyPageState
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageIntent
+import com.and04.naturealbum.ui.mypage.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.mypage.utils.LoginState
 import com.and04.naturealbum.ui.mypage.utils.MyPageAlarm
 import com.and04.naturealbum.ui.mypage.utils.MyPageSocialList
