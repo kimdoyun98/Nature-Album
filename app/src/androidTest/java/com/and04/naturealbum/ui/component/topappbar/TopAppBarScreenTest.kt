@@ -14,8 +14,9 @@ import com.and04.naturealbum.ui.album.labels.contract.LabelsState
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfoScreen
 import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoState
 import com.and04.naturealbum.ui.home.HomeScreen
-import com.and04.naturealbum.ui.mypage.LoginState
+import com.and04.naturealbum.ui.mypage.utils.LoginState
 import com.and04.naturealbum.ui.mypage.MyPageScreenContent
+import com.and04.naturealbum.ui.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.utils.LocationHandler
 import org.junit.Rule
 import org.junit.Test
@@ -54,19 +55,13 @@ class TopAppBarScreenTest {
     fun 마이페이지_화면() {
         composeTestRule.setContent {
             MyPageScreenContent(
-                navigateToHome = {},
-                navigateToFriendSearchScreen = {},
-                loginState = mutableStateOf(LoginState.Logout),
+                state = { MyPageState() },
+                onIntent = {},
                 myFriendsState = mutableStateOf(emptyList()),
                 friendRequestsState = mutableStateOf(emptyList()),
-                signInWithGoogle = { _ -> },
                 acceptFriendRequest = { _ -> },
                 rejectFriendRequest = { _ -> },
-                recentSyncTime = mutableStateOf(""),
-                networkState = mutableStateOf(0),
                 initializeFriendViewModel = { _ -> },
-                syncWorking = mutableStateOf(false),
-                startSync = {}
             )
         }
 

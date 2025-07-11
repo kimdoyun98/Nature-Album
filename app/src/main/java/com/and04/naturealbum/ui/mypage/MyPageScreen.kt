@@ -40,7 +40,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,10 +69,17 @@ import com.and04.naturealbum.background.workmanager.SynchronizationWorker
 import com.and04.naturealbum.data.dto.FirebaseFriend
 import com.and04.naturealbum.data.dto.FirebaseFriendRequest
 import com.and04.naturealbum.data.dto.MyFriend
+import com.and04.naturealbum.data.model.UserInfo
 import com.and04.naturealbum.ui.component.AppBarType
 import com.and04.naturealbum.ui.component.ProgressIndicator
 import com.and04.naturealbum.ui.component.RotatingButton
+import com.and04.naturealbum.ui.mypage.component.NoNetworkSocialContent
+import com.and04.naturealbum.ui.mypage.contract.MyPageIntent
+import com.and04.naturealbum.ui.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.mypage.friendsearch.FriendViewModel
+import com.and04.naturealbum.ui.mypage.utils.LoginState
+import com.and04.naturealbum.ui.mypage.utils.MyPageAlarm
+import com.and04.naturealbum.ui.mypage.utils.MyPageSocialList
 import com.and04.naturealbum.ui.theme.NatureAlbumTheme
 import com.and04.naturealbum.ui.utils.PermissionHandler
 import com.and04.naturealbum.utils.GetTopBar
@@ -80,7 +87,6 @@ import com.and04.naturealbum.utils.network.NetworkState
 import com.and04.naturealbum.utils.network.NetworkState.CONNECTED_DATA
 import com.and04.naturealbum.utils.network.NetworkState.CONNECTED_WIFI
 import com.and04.naturealbum.utils.network.NetworkState.DISCONNECTED
-import com.and04.naturealbum.utils.network.NetworkViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -90,52 +96,34 @@ private const val SOCIAL_ALARM_TAB_INDEX = 2
 
 @Composable
 fun MyPageScreen(
-    navigateToHome: () -> Unit,
-    navigateToFriendSearchScreen: () -> Unit,
-    myPageViewModel: MyPageViewModel = hiltViewModel(),
+    state: () -> MyPageState,
+    onIntent: (MyPageIntent) -> Unit,
     friendViewModel: FriendViewModel = hiltViewModel(),
-    networkViewModel: NetworkViewModel = hiltViewModel(),
 ) {
-    val networkState = networkViewModel.networkState.collectAsStateWithLifecycle()
-    val loginState = myPageViewModel.loginState.collectAsStateWithLifecycle()
     val myFriends = friendViewModel.friends.collectAsStateWithLifecycle()
     val receivedFriendRequests =
         friendViewModel.receivedFriendRequests.collectAsStateWithLifecycle()
-    val recentSyncTime = myPageViewModel.recentSyncTime.collectAsStateWithLifecycle()
-    val syncWorking = myPageViewModel.syncWorking.collectAsStateWithLifecycle()
 
     MyPageScreenContent(
-        navigateToHome = navigateToHome,
-        navigateToFriendSearchScreen = navigateToFriendSearchScreen,
-        loginState = loginState,
+        state = state,
+        onIntent = onIntent,
         myFriendsState = myFriends,
         friendRequestsState = receivedFriendRequests,
-        signInWithGoogle = myPageViewModel::signInWithGoogle,
         acceptFriendRequest = friendViewModel::acceptFriendRequest,
         rejectFriendRequest = friendViewModel::rejectFriendRequest,
-        recentSyncTime = recentSyncTime,
-        networkState = networkState,
         initializeFriendViewModel = friendViewModel::initialize,
-        syncWorking = syncWorking,
-        startSync = myPageViewModel::startSync
     )
 }
 
 @Composable
 fun MyPageScreenContent(
-    navigateToHome: () -> Unit,
-    navigateToFriendSearchScreen: () -> Unit,
-    loginState: State<LoginState>,
+    state: () -> MyPageState,
+    onIntent: (MyPageIntent) -> Unit,
     myFriendsState: State<List<FirebaseFriend>>,
     friendRequestsState: State<List<FirebaseFriendRequest>>,
-    signInWithGoogle: (Context) -> Unit,
     acceptFriendRequest: (String) -> Unit,
     rejectFriendRequest: (String) -> Unit,
-    recentSyncTime: State<String>,
-    networkState: State<Int>,
     initializeFriendViewModel: (String) -> Unit,
-    syncWorking: State<Boolean>,
-    startSync: () -> Unit,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -144,49 +132,38 @@ fun MyPageScreenContent(
         topBar = {
             context.GetTopBar(
                 type = AppBarType.Navigation,
-                navigateToBackScreen = { navigateToHome() }
+                navigateToBackScreen = { onIntent(MyPageIntent.BackButtonClicked) }
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackBarHostState) }
     ) { innerPadding ->
         MyPageContent(
-            navigateToFriendSearchScreen = navigateToFriendSearchScreen,
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .fillMaxSize(),
-            loginState = loginState,
+            modifier = Modifier.padding(innerPadding),
+            state = state,
+            onIntent = onIntent,
+            navigateToFriendSearchScreen = { onIntent(MyPageIntent.FriendSearchClicked) },
             myFriendsState = myFriendsState,
             friendRequestsState = friendRequestsState,
-            recentSyncTime = recentSyncTime,
-            signInWithGoogle = signInWithGoogle,
             acceptFriendRequest = acceptFriendRequest,
             rejectFriendRequest = rejectFriendRequest,
             snackBarHostState = snackBarHostState,
-            networkState = networkState,
             initializeFriendViewModel = initializeFriendViewModel,
-            syncWorking = syncWorking,
-            startSync = startSync
         )
     }
 }
 
 @Composable
 private fun MyPageContent(
-    navigateToFriendSearchScreen: () -> Unit,
     modifier: Modifier,
-    loginState: State<LoginState>,
+    state: () -> MyPageState,
+    onIntent: (MyPageIntent) -> Unit,
+    navigateToFriendSearchScreen: () -> Unit,
     myFriendsState: State<List<FirebaseFriend>>,
     friendRequestsState: State<List<FirebaseFriendRequest>>,
-    signInWithGoogle: (Context) -> Unit,
     acceptFriendRequest: (String) -> Unit,
     rejectFriendRequest: (String) -> Unit,
-    recentSyncTime: State<String>,
     snackBarHostState: SnackbarHostState,
-    networkState: State<Int>,
     initializeFriendViewModel: (String) -> Unit,
-    syncWorking: State<Boolean>,
-    startSync: () -> Unit,
 ) {
     val requestPermissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions()) {}
@@ -202,37 +179,33 @@ private fun MyPageContent(
         )
     }
 
-    Box(modifier = modifier) {
-        when (val success = loginState.value) {
+    Box(
+        modifier = modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxSize()
+    ) {
+        when (val loginState = state().loginState) {
             is LoginState.Login -> {
                 Column(
-                    modifier = modifier,
+                    modifier = modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(32.dp),
                 ) {
-                    val userEmail = success.userInfo.userEmail
-                    val userPhotoUri = success.userInfo.userPhotoUri
-                    val userDisplayName = success.userInfo.userDisplayName
-                    val userUid = success.userInfo.userUid
-
+                    val userUid = loginState.userInfo.userUid
                     userUid?.let { initializeFriendViewModel(userUid) }
 
-                    SideEffect {
-                        permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
-                    }
-
                     UserProfileContent(
-                        uriState = userPhotoUri,
-                        emailState = userEmail,
-                        displayNameState = userDisplayName,
+                        userInfo = loginState.userInfo,
                         snackBarHostState = snackBarHostState,
-                        recentSyncTime = recentSyncTime,
-                        networkState = networkState,
-                        syncWorking = syncWorking,
-                        startSync = startSync
+                        recentSyncTime = state().recentSyncTime,
+                        syncWorking = state().isSyncWorking,
+                        networkState = state().networkState,
+                        onIntent = onIntent,
                     )
 
-                    if (networkState.value == DISCONNECTED) {
+                    if (state().networkState == DISCONNECTED) {
                         NoNetworkSocialContent()
                     } else {
                         SocialContent(
@@ -245,11 +218,15 @@ private fun MyPageContent(
                         )
                     }
                 }
+
+                LaunchedEffect(Unit) {
+                    permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
+                }
             }
 
             is LoginState.Logout, LoginState.LoginLoading -> {
                 Box {
-                    ProgressIndicator(success is LoginState.LoginLoading)
+                    ProgressIndicator(state().loginState is LoginState.LoginLoading)
                 }
                 Column(
                     modifier = modifier,
@@ -258,7 +235,8 @@ private fun MyPageContent(
                 ) {
                     UserProfileContent()
                     LoginContent(
-                    ) { signInWithGoogle(context) }
+                        loginHandle = { onIntent(MyPageIntent.LoginClicked(context)) }
+                    )
                 }
             }
         }
@@ -266,42 +244,17 @@ private fun MyPageContent(
 }
 
 @Composable
-fun NoNetworkSocialContent() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Image(
-            imageVector = Icons.Default.WifiOff,
-            contentDescription = stringResource(R.string.my_page_no_network_social_content_icon_description),
-            modifier = Modifier
-                .size(48.dp)
-                .padding(bottom = 16.dp)
-        )
-        Text(
-            text = stringResource(R.string.my_page_no_network_social_content_message),
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 16.dp),
-        )
-    }
-}
-
-@Composable
 private fun UserProfileContent(
-    uriState: String? = null,
-    emailState: String? = null,
-    displayNameState: String? = null,
+    userInfo: UserInfo? = null,
     snackBarHostState: SnackbarHostState? = null,
-    recentSyncTime: State<String>? = null,
-    networkState: State<Int>? = null,
-    syncWorking: State<Boolean>? = null,
-    startSync: () -> Unit = {},
+    recentSyncTime: String? = null,
+    networkState: Int = 0,
+    syncWorking: Boolean = false,
+    onIntent: (MyPageIntent) -> Unit = {}
 ) {
-    val uri = uriState ?: ""
-    val email = emailState ?: stringResource(R.string.my_page_default_user_email)
-    val displayName = displayNameState ?: ""
+    val uri = userInfo?.userPhotoUri ?: ""
+    val email = userInfo?.userEmail ?: stringResource(R.string.my_page_default_user_email)
+    val displayName = userInfo?.userDisplayName ?: ""
 
     UserProfileImage(
         uri = uri,
@@ -327,12 +280,12 @@ private fun UserProfileContent(
             textAlign = TextAlign.Center
         )
 
-        if (snackBarHostState != null && networkState?.value != DISCONNECTED) {
+        if (snackBarHostState != null && networkState != DISCONNECTED) {
             SyncContent(
                 snackBarHostState = snackBarHostState,
                 recentSyncTime = recentSyncTime!!,
-                syncWorking = syncWorking!!,
-                startSync = startSync
+                syncWorking = syncWorking,
+                onClick = { onIntent(MyPageIntent.SyncButtonClicked) }
             )
         }
     }
@@ -495,9 +448,9 @@ private fun MyPageCustomTab(
 @Composable
 private fun SyncContent(
     snackBarHostState: SnackbarHostState,
-    recentSyncTime: State<String>,
-    syncWorking: State<Boolean>,
-    startSync: () -> Unit,
+    recentSyncTime: String,
+    syncWorking: Boolean,
+    onClick: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -514,7 +467,7 @@ private fun SyncContent(
                 when (NetworkState.getNetWorkCode()) {
                     CONNECTED_WIFI -> {
                         SynchronizationWorker.runImmediately(context)
-                        startSync()
+                        onClick()
                     }
 
                     CONNECTED_DATA -> {
@@ -524,7 +477,7 @@ private fun SyncContent(
                             snackBarHostState = snackBarHostState,
                             message = context.getString(R.string.my_page_snackbar_network_state_data_keep_going),
                             actionLabel = context.getString(R.string.my_page_snackbar_confirm_button),
-                            onClickActionPerformed = startSync
+                            onClickActionPerformed = { onClick() }
                         )
                     }
 
@@ -541,7 +494,7 @@ private fun SyncContent(
             }
         ) {
             RotatingButton(
-                rotatingState = syncWorking.value,
+                rotatingState = syncWorking,
                 imageVector = Icons.Default.Sync,
                 contentDescription = stringResource(R.string.my_page_sync_icon_content_description)
             )
@@ -549,7 +502,7 @@ private fun SyncContent(
     }
     Text(
         style = MaterialTheme.typography.bodySmall,
-        text = recentSyncTime.value
+        text = recentSyncTime
     )
 
 }

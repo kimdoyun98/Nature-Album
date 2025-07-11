@@ -47,7 +47,7 @@ import coil3.compose.AsyncImage
 import com.and04.naturealbum.R
 import com.and04.naturealbum.data.dto.FirestoreUserWithStatus
 import com.and04.naturealbum.data.dto.FriendStatus
-import com.and04.naturealbum.ui.mypage.NoNetworkSocialContent
+import com.and04.naturealbum.ui.mypage.component.NoNetworkSocialContent
 import com.and04.naturealbum.utils.network.NetworkState.DISCONNECTED
 import com.and04.naturealbum.utils.network.NetworkViewModel
 

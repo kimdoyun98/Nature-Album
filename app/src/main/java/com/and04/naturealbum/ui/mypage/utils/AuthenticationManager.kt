@@ -1,4 +1,4 @@
-package com.and04.naturealbum.ui.mypage
+package com.and04.naturealbum.ui.mypage.utils
 
 import android.content.Context
 import android.util.Log
