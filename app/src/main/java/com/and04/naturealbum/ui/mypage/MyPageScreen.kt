@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -41,7 +40,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,8 +59,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.and04.naturealbum.R
 import com.and04.naturealbum.background.workmanager.SynchronizationWorker
@@ -76,7 +72,6 @@ import com.and04.naturealbum.ui.component.RotatingButton
 import com.and04.naturealbum.ui.mypage.component.NoNetworkSocialContent
 import com.and04.naturealbum.ui.mypage.contract.MyPageIntent
 import com.and04.naturealbum.ui.mypage.contract.MyPageState
-import com.and04.naturealbum.ui.mypage.friendsearch.FriendViewModel
 import com.and04.naturealbum.ui.mypage.utils.LoginState
 import com.and04.naturealbum.ui.mypage.utils.MyPageAlarm
 import com.and04.naturealbum.ui.mypage.utils.MyPageSocialList
@@ -87,6 +82,7 @@ import com.and04.naturealbum.utils.network.NetworkState
 import com.and04.naturealbum.utils.network.NetworkState.CONNECTED_DATA
 import com.and04.naturealbum.utils.network.NetworkState.CONNECTED_WIFI
 import com.and04.naturealbum.utils.network.NetworkState.DISCONNECTED
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -98,32 +94,6 @@ private const val SOCIAL_ALARM_TAB_INDEX = 2
 fun MyPageScreen(
     state: () -> MyPageState,
     onIntent: (MyPageIntent) -> Unit,
-    friendViewModel: FriendViewModel = hiltViewModel(),
-) {
-    val myFriends = friendViewModel.friends.collectAsStateWithLifecycle()
-    val receivedFriendRequests =
-        friendViewModel.receivedFriendRequests.collectAsStateWithLifecycle()
-
-    MyPageScreenContent(
-        state = state,
-        onIntent = onIntent,
-        myFriendsState = myFriends,
-        friendRequestsState = receivedFriendRequests,
-        acceptFriendRequest = friendViewModel::acceptFriendRequest,
-        rejectFriendRequest = friendViewModel::rejectFriendRequest,
-        initializeFriendViewModel = friendViewModel::initialize,
-    )
-}
-
-@Composable
-fun MyPageScreenContent(
-    state: () -> MyPageState,
-    onIntent: (MyPageIntent) -> Unit,
-    myFriendsState: State<List<FirebaseFriend>>,
-    friendRequestsState: State<List<FirebaseFriendRequest>>,
-    acceptFriendRequest: (String) -> Unit,
-    rejectFriendRequest: (String) -> Unit,
-    initializeFriendViewModel: (String) -> Unit,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -141,13 +111,7 @@ fun MyPageScreenContent(
             modifier = Modifier.padding(innerPadding),
             state = state,
             onIntent = onIntent,
-            navigateToFriendSearchScreen = { onIntent(MyPageIntent.FriendSearchClicked) },
-            myFriendsState = myFriendsState,
-            friendRequestsState = friendRequestsState,
-            acceptFriendRequest = acceptFriendRequest,
-            rejectFriendRequest = rejectFriendRequest,
             snackBarHostState = snackBarHostState,
-            initializeFriendViewModel = initializeFriendViewModel,
         )
     }
 }
@@ -157,13 +121,7 @@ private fun MyPageContent(
     modifier: Modifier,
     state: () -> MyPageState,
     onIntent: (MyPageIntent) -> Unit,
-    navigateToFriendSearchScreen: () -> Unit,
-    myFriendsState: State<List<FirebaseFriend>>,
-    friendRequestsState: State<List<FirebaseFriendRequest>>,
-    acceptFriendRequest: (String) -> Unit,
-    rejectFriendRequest: (String) -> Unit,
     snackBarHostState: SnackbarHostState,
-    initializeFriendViewModel: (String) -> Unit,
 ) {
     val requestPermissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions()) {}
@@ -178,69 +136,67 @@ private fun MyPageContent(
             },
         )
     }
+    when (val loginState = state().loginState) {
+        is LoginState.Login -> {
+            Column(
+                modifier = modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(32.dp),
+            ) {
+                UserProfileContent(
+                    userInfo = loginState.userInfo,
+                    snackBarHostState = snackBarHostState,
+                    recentSyncTime = state().recentSyncTime,
+                    syncWorking = state().isSyncWorking,
+                    networkState = state().networkState,
+                    onIntent = onIntent,
+                )
 
-    Box(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxSize()
-    ) {
-        when (val loginState = state().loginState) {
-            is LoginState.Login -> {
-                Column(
-                    modifier = modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(32.dp),
-                ) {
-                    val userUid = loginState.userInfo.userUid
-                    userUid?.let { initializeFriendViewModel(userUid) }
-
-                    UserProfileContent(
-                        userInfo = loginState.userInfo,
-                        snackBarHostState = snackBarHostState,
-                        recentSyncTime = state().recentSyncTime,
-                        syncWorking = state().isSyncWorking,
-                        networkState = state().networkState,
-                        onIntent = onIntent,
+                if (state().networkState == DISCONNECTED) {
+                    NoNetworkSocialContent()
+                } else {
+                    SocialContent(
+                        modifier = Modifier.weight(1f),
+                        friends = state().friends,
+                        friendRequests = state().receivedFriendRequests,
+                        navigateToFriendSearchScreen = {
+                            onIntent(MyPageIntent.FriendSearchClicked)
+                        },
+                        acceptFriendRequest = { uid ->
+                            onIntent(MyPageIntent.FriendRequestAccept(uid))
+                        },
+                        rejectFriendRequest = { uid ->
+                            onIntent(MyPageIntent.FriendRequestReject(uid))
+                        },
                     )
-
-                    if (state().networkState == DISCONNECTED) {
-                        NoNetworkSocialContent()
-                    } else {
-                        SocialContent(
-                            navigateToFriendSearchScreen = navigateToFriendSearchScreen,
-                            modifier = Modifier.weight(1f),
-                            myFriendsState = myFriendsState,
-                            friendRequestsState = friendRequestsState,
-                            acceptFriendRequest = acceptFriendRequest,
-                            rejectFriendRequest = rejectFriendRequest,
-                        )
-                    }
-                }
-
-                LaunchedEffect(Unit) {
-                    permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
                 }
             }
 
-            is LoginState.Logout, LoginState.LoginLoading -> {
-                Box {
-                    ProgressIndicator(state().loginState is LoginState.LoginLoading)
-                }
-                Column(
-                    modifier = modifier,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(32.dp),
-                ) {
-                    UserProfileContent()
-                    LoginContent(
-                        loginHandle = { onIntent(MyPageIntent.LoginClicked(context)) }
-                    )
-                }
+            LaunchedEffect(Unit) {
+                permissionHandler.checkPermissions(PermissionHandler.Permissions.NOTIFICATION)
+            }
+        }
+
+        is LoginState.Logout, LoginState.LoginLoading -> {
+            Box {
+                ProgressIndicator(state().loginState is LoginState.LoginLoading)
+            }
+
+            Column(
+                modifier = modifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(32.dp),
+            ) {
+                UserProfileContent()
+                LoginContent(
+                    loginHandle = { onIntent(MyPageIntent.LoginClicked(context)) }
+                )
             }
         }
     }
+
 }
 
 @Composable
@@ -367,15 +323,13 @@ private fun LoginContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SocialContent(
-    navigateToFriendSearchScreen: () -> Unit,
     modifier: Modifier,
-    myFriendsState: State<List<FirebaseFriend>>,
-    friendRequestsState: State<List<FirebaseFriendRequest>>,
+    friends: ImmutableList<FirebaseFriend>,
+    friendRequests: ImmutableList<FirebaseFriendRequest>,
+    navigateToFriendSearchScreen: () -> Unit,
     acceptFriendRequest: (String) -> Unit,
     rejectFriendRequest: (String) -> Unit,
 ) {
-    val myFriends = myFriendsState.value
-    val friendRequests = friendRequestsState.value
     val friendRequestsCount = friendRequests.size
 
     var tabState by remember { mutableIntStateOf(SOCIAL_LIST_TAB_INDEX) }
@@ -398,15 +352,15 @@ private fun SocialContent(
         }
 
         when (tabState) {
-            SOCIAL_LIST_TAB_INDEX -> MyPageSocialList(myFriends) // 친구 목록
+            SOCIAL_LIST_TAB_INDEX -> MyPageSocialList(friends) // 친구 목록
             SOCIAL_SEARCH_TAB_INDEX -> {
                 navigateToFriendSearchScreen()
             }
 
             SOCIAL_ALARM_TAB_INDEX -> MyPageAlarm(
                 myAlarms = friendRequests,
-                acceptFriendRequest = acceptFriendRequest,
-                rejectFriendRequest = rejectFriendRequest,
+                onAccept = acceptFriendRequest,
+                onDenied = rejectFriendRequest,
             )
         }
     }

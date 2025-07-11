@@ -1,6 +1,5 @@
 package com.and04.naturealbum.ui.component.topappbar
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -14,8 +13,7 @@ import com.and04.naturealbum.ui.album.labels.contract.LabelsState
 import com.and04.naturealbum.ui.album.photoinfo.PhotoInfoScreen
 import com.and04.naturealbum.ui.album.photoinfo.contract.PhotoInfoState
 import com.and04.naturealbum.ui.home.HomeScreen
-import com.and04.naturealbum.ui.mypage.utils.LoginState
-import com.and04.naturealbum.ui.mypage.MyPageScreenContent
+import com.and04.naturealbum.ui.mypage.MyPageScreen
 import com.and04.naturealbum.ui.mypage.contract.MyPageState
 import com.and04.naturealbum.ui.utils.LocationHandler
 import org.junit.Rule
@@ -54,14 +52,9 @@ class TopAppBarScreenTest {
     @Test
     fun 마이페이지_화면() {
         composeTestRule.setContent {
-            MyPageScreenContent(
+            MyPageScreen(
                 state = { MyPageState() },
                 onIntent = {},
-                myFriendsState = mutableStateOf(emptyList()),
-                friendRequestsState = mutableStateOf(emptyList()),
-                acceptFriendRequest = { _ -> },
-                rejectFriendRequest = { _ -> },
-                initializeFriendViewModel = { _ -> },
             )
         }
 

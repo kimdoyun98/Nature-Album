@@ -84,8 +84,8 @@ fun MyPageSocialItem(myFriend: FirebaseFriend) {
 @Composable
 fun MyPageAlarm(
     myAlarms: List<FirebaseFriendRequest>,
-    acceptFriendRequest: (String) -> Unit,
-    rejectFriendRequest: (String) -> Unit,
+    onAccept: (String) -> Unit,
+    onDenied: (String) -> Unit,
 ) {
     if (myAlarms.isEmpty()) {
         Box(
@@ -105,8 +105,8 @@ fun MyPageAlarm(
                 key = { friendRequest -> friendRequest.user.email }) { friendRequest ->
                 MyPageAlarmItem(
                     friendRequest = friendRequest,
-                    onAccept = { acceptFriendRequest(friendRequest.user.uid) },
-                    onDenied = { rejectFriendRequest(friendRequest.user.uid) }
+                    onAccept = { onAccept(friendRequest.user.uid) },
+                    onDenied = { onDenied(friendRequest.user.uid) }
                 )
             }
         }

@@ -16,14 +16,14 @@ sealed interface LoginState {
     companion object {
         fun initState(manager: UserManager): LoginState{
             return if (manager.isSignIn()) {
-                getUserInfoUiState()
+                getUserInfoUiState(manager)
             } else {
                 Logout
             }
         }
 
-        private fun getUserInfoUiState(): LoginState {
-            val user = UserManager.getUser()
+        private fun getUserInfoUiState(manager: UserManager): LoginState {
+            val user = manager.getUser()
             return Login(
                 UserInfo(
                     userEmail = user?.email,

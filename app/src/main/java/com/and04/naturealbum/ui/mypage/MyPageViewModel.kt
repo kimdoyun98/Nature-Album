@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.and04.naturealbum.background.workmanager.SynchronizationWorker
 import com.and04.naturealbum.data.localdata.datastore.DataStoreManager
-import com.and04.naturealbum.data.localdata.datastore.DataStoreManager.Companion.NEVER_SYNC
 import com.and04.naturealbum.data.repository.firebase.FriendRepository
 import com.and04.naturealbum.ui.mypage.contract.MyPageEffect
 import com.and04.naturealbum.ui.mypage.contract.MyPageIntent
@@ -16,13 +15,10 @@ import com.and04.naturealbum.ui.mypage.utils.LoginState
 import com.and04.naturealbum.ui.utils.UserManager
 import com.and04.naturealbum.utils.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
@@ -31,6 +27,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
+    private val friendRepository: FriendRepository,
     private val authenticationManager: AuthenticationManager,
     private val userManager: UserManager,
     private val syncDataStore: DataStoreManager,
@@ -39,9 +36,13 @@ class MyPageViewModel @Inject constructor(
 
     override val container: Container<MyPageState, MyPageEffect> = container(MyPageState())
 
+    private var uid: String? = userManager.getUser()?.uid
+
     init {
         checkNetwork()
         syncTime()
+        listenToFriends()
+        listenToReceivedFriendRequests()
     }
 
     fun onIntent(intent: MyPageIntent) = intent {
@@ -60,6 +61,14 @@ class MyPageViewModel @Inject constructor(
 
             is MyPageIntent.SyncButtonClicked -> {
                 startSync()
+            }
+
+            is MyPageIntent.FriendRequestAccept -> {
+                acceptFriendRequest(intent.friendUid)
+            }
+
+            is MyPageIntent.FriendRequestReject -> {
+                rejectFriendRequest(intent.friendUid)
             }
         }
     }
@@ -93,6 +102,11 @@ class MyPageViewModel @Inject constructor(
                 when (response) {
                     is AuthResponse.Success -> {
                         reduce { state.copy(loginState = LoginState.initState(userManager)) }
+
+                        uid = userManager.getUser()?.uid ?: throw Exception()
+
+                        listenToFriends()
+                        listenToReceivedFriendRequests()
                     }
 
                     is AuthResponse.Error -> {
@@ -108,6 +122,50 @@ class MyPageViewModel @Inject constructor(
                 reduce {
                     state.copy(networkState = networkState)
                 }
+            }
+        }
+    }
+
+    private fun listenToFriends() = intent {
+        uid?.let { currentUid ->
+            viewModelScope.launch {
+                friendRepository
+                    .getFriendsAsFlow(currentUid)
+                    .collect { friends ->
+                        reduce { state.copy(friends = friends.toImmutableList()) }
+                    }
+            }
+        }
+    }
+
+    private fun listenToReceivedFriendRequests() = intent {
+        uid?.let { currentUid ->
+            viewModelScope.launch {
+                friendRepository
+                    .getReceivedFriendRequestsAsFlow(currentUid)
+                    .collect { receivedFriendRequests ->
+                        reduce {
+                            state.copy(
+                                receivedFriendRequests = receivedFriendRequests.toImmutableList()
+                            )
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun rejectFriendRequest(targetUid: String) {
+        uid?.let { currentUid ->
+            viewModelScope.launch {
+                friendRepository.rejectFriendRequest(currentUid, targetUid)
+            }
+        }
+    }
+
+    private fun acceptFriendRequest(targetUid: String) {
+        uid?.let { currentUid ->
+            viewModelScope.launch {
+                friendRepository.acceptFriendRequest(currentUid, targetUid)
             }
         }
     }

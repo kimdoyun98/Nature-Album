@@ -10,4 +10,8 @@ sealed interface MyPageIntent {
     data class LoginClicked(val context: Context): MyPageIntent
 
     data object SyncButtonClicked: MyPageIntent
+
+    data class FriendRequestAccept(val friendUid: String): MyPageIntent
+
+    data class FriendRequestReject(val friendUid: String): MyPageIntent
 }
